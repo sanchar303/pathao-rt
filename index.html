@@ -1,0 +1,1236 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Pathao Ride Telemetry</title>
+  <link rel="icon" type="image/png" href="favicon.png" />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
+  <style>
+    :root {
+      --bg: #080a0f;
+      --surface: rgba(17, 21, 30, 0.72);
+      --surface-solid: #11151e;
+      --surface-elevated: rgba(25, 31, 44, 0.82);
+      --border: rgba(255, 255, 255, 0.08);
+      --border-strong: rgba(255, 255, 255, 0.16);
+      --text: #f3f5f8;
+      --text-dim: #8b95a7;
+      --accent: #e82e3f;
+      --accent-glow: rgba(232, 46, 63, 0.28);
+      --green: #10b981;
+      --cyan: #38bdf8;
+      --amber: #f59e0b;
+      --mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Inter, sans-serif;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background:
+        radial-gradient(circle at 12% 8%, rgba(232, 46, 63, 0.12), transparent 36%),
+        radial-gradient(circle at 88% 14%, rgba(56, 189, 248, 0.08), transparent 38%),
+        var(--bg);
+      color: var(--text);
+      font-family: var(--sans);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      line-height: 1.45;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    .container {
+      width: 100%;
+      max-width: 1240px;
+      margin: 0 auto;
+      padding: 20px 16px 32px;
+      flex: 1;
+    }
+
+    /* Top Search Bar */
+    .search-shell {
+      background: var(--surface);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      padding: 6px 6px 6px 18px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      box-shadow: 0 16px 40px rgba(0, 0, 0, 0.45);
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+
+    .search-shell:focus-within {
+      border-color: rgba(232, 46, 63, 0.55);
+      box-shadow: 0 16px 40px rgba(0, 0, 0, 0.55), 0 0 0 3px var(--accent-glow);
+    }
+
+    .brand-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: var(--accent);
+      box-shadow: 0 0 12px var(--accent);
+      flex-shrink: 0;
+    }
+
+    .search-input {
+      flex: 1;
+      background: transparent;
+      border: none;
+      outline: none;
+      color: var(--text);
+      font-size: 14px;
+      font-family: var(--mono);
+      min-width: 0;
+    }
+
+    .search-input::placeholder { color: var(--text-dim); font-family: var(--sans); }
+
+    .btn {
+      border: none;
+      outline: none;
+      cursor: pointer;
+      border-radius: 999px;
+      font-weight: 600;
+      font-size: 13px;
+      padding: 10px 20px;
+      transition: transform 0.12s, background 0.18s, opacity 0.18s;
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      white-space: nowrap;
+    }
+
+    .btn:active { transform: scale(0.97); }
+    .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+    .btn-primary {
+      background: var(--accent);
+      color: #fff;
+      box-shadow: 0 4px 16px var(--accent-glow);
+    }
+
+    .btn-primary:hover:not(:disabled) { background: #f23849; }
+
+    .btn-ghost {
+      background: rgba(255, 255, 255, 0.06);
+      color: var(--text);
+      border: 1px solid var(--border);
+      padding: 8px 14px;
+      font-size: 12px;
+    }
+
+    .btn-ghost:hover:not(:disabled) { background: rgba(255, 255, 255, 0.11); }
+
+    .toolbar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 12px;
+      padding: 0 6px;
+    }
+
+    .toolbar-group {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .status-line {
+      font-size: 12px;
+      color: var(--text-dim);
+      font-family: var(--mono);
+    }
+
+    .status-line.error { color: #f87171; }
+    .status-line.ok { color: var(--green); }
+
+    /* Main Grid */
+    .dashboard {
+      margin-top: 18px;
+      display: none;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .dashboard.visible { display: flex; }
+
+    .glass-card {
+      background: var(--surface);
+      backdrop-filter: blur(18px);
+      -webkit-backdrop-filter: blur(18px);
+      border: 1px solid var(--border);
+      border-radius: 22px;
+      padding: 18px;
+    }
+
+    /* Telemetry Strip */
+    .telemetry-bar {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(165px, 1fr));
+      gap: 12px;
+    }
+
+    .stat-box {
+      background: var(--surface-elevated);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 13px 15px;
+    }
+
+    .stat-label {
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--text-dim);
+      margin-bottom: 4px;
+    }
+
+    .stat-val {
+      font-size: 17px;
+      font-weight: 700;
+      font-variant-numeric: tabular-nums;
+      display: flex;
+      align-items: center;
+      gap: 7px;
+    }
+
+    .stat-sub {
+      font-size: 11.5px;
+      color: var(--text-dim);
+      font-family: var(--mono);
+      margin-top: 2px;
+    }
+
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 3px 10px;
+      border-radius: 999px;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+
+    .pill-live { background: rgba(16, 185, 129, 0.16); color: var(--green); border: 1px solid rgba(16, 185, 129, 0.35); }
+    .pill-warn { background: rgba(245, 158, 11, 0.16); color: var(--amber); border: 1px solid rgba(245, 158, 11, 0.35); }
+    .pill-red  { background: rgba(232, 46, 63, 0.16); color: #ff6b78; border: 1px solid rgba(232, 46, 63, 0.35); }
+    .pill-neutral { background: rgba(255, 255, 255, 0.07); color: var(--text-dim); border: 1px solid var(--border); }
+
+    .pulse-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: currentColor;
+      animation: pulse 1.6s infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.35; transform: scale(1.35); }
+    }
+
+    /* Two-column split */
+    .split-grid {
+      display: grid;
+      grid-template-columns: 1.35fr 1fr;
+      gap: 16px;
+    }
+
+    @media (max-width: 920px) {
+      .split-grid { grid-template-columns: 1fr; }
+    }
+
+    /* Map */
+    .map-card {
+      padding: 0;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      min-height: 440px;
+    }
+
+    .map-header {
+      padding: 13px 18px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 1px solid var(--border);
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    #map {
+      flex: 1;
+      width: 100%;
+      min-height: 390px;
+      background: #0b0e14;
+      z-index: 1;
+    }
+
+    .leaflet-container { font-family: var(--sans); }
+    .leaflet-popup-content-wrapper, .leaflet-popup-tip {
+      background: #131823;
+      color: var(--text);
+      border: 1px solid var(--border-strong);
+      border-radius: 12px;
+    }
+
+    /* Entities & Route */
+    .stack { display: flex; flex-direction: column; gap: 16px; }
+
+    .section-title {
+      font-size: 11.5px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--text-dim);
+      margin-bottom: 12px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .person-row {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
+
+    .avatar {
+      width: 50px;
+      height: 50px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, rgba(232, 46, 63, 0.3), rgba(56, 189, 248, 0.25));
+      border: 1px solid var(--border-strong);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 700;
+      font-size: 16px;
+      color: #fff;
+      overflow: hidden;
+      flex-shrink: 0;
+    }
+
+    .avatar img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+
+    .person-meta { flex: 1; min-width: 0; }
+    .person-name { font-size: 16px; font-weight: 700; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+    .person-sub { font-size: 12.5px; color: var(--text-dim); margin-top: 2px; font-family: var(--mono); }
+
+    .plate-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      margin-top: 12px;
+      padding: 7px 12px;
+      border-radius: 10px;
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid var(--border-strong);
+      font-family: var(--mono);
+      font-size: 13px;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+    }
+
+    .copy-chip {
+      background: rgba(255, 255, 255, 0.08);
+      border: 1px solid var(--border);
+      color: var(--text-dim);
+      border-radius: 999px;
+      padding: 3px 9px;
+      font-size: 11px;
+      font-family: var(--mono);
+      cursor: pointer;
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .copy-chip:hover { color: var(--text); border-color: var(--border-strong); }
+
+    /* Route Timeline */
+    .route-list {
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+      position: relative;
+    }
+
+    .route-item {
+      display: grid;
+      grid-template-columns: 18px 1fr;
+      gap: 12px;
+      align-items: start;
+    }
+
+    .node-col {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding-top: 4px;
+    }
+
+    .node-dot {
+      width: 11px;
+      height: 11px;
+      border-radius: 50%;
+    }
+
+    .node-dot.pickup { background: var(--green); box-shadow: 0 0 10px rgba(16, 185, 129, 0.6); }
+    .node-dot.current { background: var(--cyan); box-shadow: 0 0 10px rgba(56, 189, 248, 0.7); }
+    .node-dot.dropoff { background: var(--accent); box-shadow: 0 0 10px var(--accent-glow); }
+
+    .route-title { font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-dim); }
+    .route-addr { font-size: 14px; font-weight: 600; margin-top: 2px; word-break: break-word; }
+    .route-coords {
+      font-size: 11.5px;
+      font-family: var(--mono);
+      color: var(--text-dim);
+      margin-top: 4px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    /* Key-Value Grid */
+    .kv-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+      gap: 10px 16px;
+    }
+
+    .kv-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      padding: 8px 0;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+      gap: 10px;
+    }
+
+    .kv-k { font-size: 12px; color: var(--text-dim); }
+    .kv-v { font-size: 12.5px; font-family: var(--mono); font-weight: 600; text-align: right; }
+
+    /* Raw JSON Drawer */
+    details.json-box {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      overflow: hidden;
+    }
+
+    details.json-box summary {
+      padding: 13px 18px;
+      cursor: pointer;
+      font-size: 12px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.07em;
+      color: var(--text-dim);
+      user-select: none;
+      list-style: none;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    details.json-box summary::-webkit-details-marker { display: none; }
+
+    .json-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      padding: 0 18px 18px;
+    }
+
+    @media (max-width: 820px) {
+      .json-grid { grid-template-columns: 1fr; }
+    }
+
+    pre.code-pane {
+      background: #06080c;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 12px;
+      font-family: var(--mono);
+      font-size: 11.5px;
+      color: #cbd5e1;
+      overflow: auto;
+      max-height: 300px;
+    }
+
+    /* Manual JSON Modal */
+    .modal-backdrop {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.72);
+      backdrop-filter: blur(8px);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 16px;
+      z-index: 1000;
+    }
+
+    .modal-backdrop.open { display: flex; }
+
+    .modal-card {
+      background: #10141d;
+      border: 1px solid var(--border-strong);
+      border-radius: 22px;
+      width: 100%;
+      max-width: 680px;
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .modal-card textarea {
+      width: 100%;
+      height: 120px;
+      background: #07090e;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 10px;
+      color: var(--text);
+      font-family: var(--mono);
+      font-size: 12px;
+      resize: vertical;
+      outline: none;
+    }
+
+    footer {
+      text-align: center;
+      padding: 18px 16px;
+      font-size: 12px;
+      color: var(--text-dim);
+      border-top: 1px solid rgba(255, 255, 255, 0.05);
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <form class="search-shell" id="lookupForm" autocomplete="off">
+      <span class="brand-dot"></span>
+      <input
+        id="urlInput"
+        class="search-input"
+        type="text"
+        placeholder="https://pages.pathao.com/share-ride/u----pxXG____UtgQgt7i5O3CYjw=="
+        spellcheck="false"
+        required
+      />
+      <button type="submit" class="btn btn-primary" id="fetchBtn">Inspect</button>
+    </form>
+
+    <div class="toolbar">
+      <div class="status-line" id="statusLine">Ready</div>
+      <div class="toolbar-group">
+        <button type="button" class="btn btn-ghost" id="autoPollBtn" style="display:none;">Auto-Sync: OFF</button>
+        <button type="button" class="btn btn-ghost" id="openManualBtn">Paste JSON</button>
+        <button type="button" class="btn btn-ghost" id="loadSampleBtn">Sample</button>
+      </div>
+    </div>
+
+    <main class="dashboard" id="dashboard">
+      <!-- Top Telemetry -->
+      <section class="telemetry-bar" id="telemetryBar"></section>
+
+      <!-- Map + Entities/Route -->
+      <section class="split-grid">
+        <div class="glass-card map-card">
+          <div class="map-header">
+            <span class="section-title" style="margin:0;">Live Route &amp; Telemetry</span>
+            <div class="toolbar-group">
+              <button type="button" class="copy-chip" id="fitBoundsBtn">Fit Route</button>
+              <a class="copy-chip" id="extMapsBtn" target="_blank" rel="noopener">Open Google Maps ↗</a>
+            </div>
+          </div>
+          <div id="map"></div>
+        </div>
+
+        <div class="stack">
+          <div class="glass-card" id="driverCard"></div>
+          <div class="glass-card" id="riderCard"></div>
+          <div class="glass-card" id="routeCard"></div>
+        </div>
+      </section>
+
+      <!-- Exact Timestamps & System Metadata -->
+      <section class="glass-card">
+        <div class="section-title">
+          <span>Session &amp; Timestamp Breakdown</span>
+          <span id="rideIdBadge" class="copy-chip" title="Copy Ride ID"></span>
+        </div>
+        <div class="kv-grid" id="metaGrid"></div>
+      </section>
+
+      <!-- Raw API Payloads -->
+      <details class="json-box">
+        <summary>
+          <span>Raw Endpoint Responses (/api/ride &amp; /api/ride/path)</span>
+          <span style="font-family:var(--mono);font-size:11px;">JSON</span>
+        </summary>
+        <div class="json-grid">
+          <div>
+            <div class="stat-label" style="margin-bottom:6px;">GET /api/ride</div>
+            <pre class="code-pane" id="rawRideJson"></pre>
+          </div>
+          <div>
+            <div class="stat-label" style="margin-bottom:6px;">GET /api/ride/path</div>
+            <pre class="code-pane" id="rawPathJson"></pre>
+          </div>
+        </div>
+      </details>
+    </main>
+  </div>
+
+  <!-- Manual JSON Fallback Modal -->
+  <div class="modal-backdrop" id="manualModal">
+    <div class="modal-card">
+      <div class="section-title" style="margin:0;">
+        <span>Direct Payload Parser</span>
+        <button type="button" class="copy-chip" id="closeManualBtn">ESC</button>
+      </div>
+      <textarea id="manualRideInput" placeholder='Paste /api/ride JSON response here...'></textarea>
+      <textarea id="manualPathInput" placeholder='Paste /api/ride/path JSON response here (optional)...'></textarea>
+      <div style="display:flex;justify-content:flex-end;gap:8px;">
+        <button type="button" class="btn btn-primary" id="parseManualBtn">Render Payload</button>
+      </div>
+    </div>
+  </div>
+
+  <footer>© 2026 Sanchar Koirala | All rights reserved</footer>
+
+  <script>
+    const SAMPLE_ID = "u----pxXG____UtgQgt7i5O3CYjw==";
+    const SAMPLE_RIDE = {
+      created_at: 1795076186,
+      started_at: 1795076414,
+      current_latitude: 27.677845,
+      current_longitude: 85.310939,
+      estimated_pickup_latitude: 27.67586626,
+      estimated_pickup_longitude: 85.31464487,
+      estimated_dropoff_latitude: 27.69995411,
+      estimated_dropoff_longitude: 85.36877453,
+      pickup_latitude: 27.6758595,
+      pickup_longitude: 85.3145817,
+      pickup_address: "टीथ वेअवेर्स डेन्तल क्लिनिक, उग्रचन्दी मार्ग",
+      dropoff_address: "Khadka Kul Deuta Mandir, Thapagaon, Kathmandu",
+      estimated_ride_duration: 1616,
+      stoppages: null,
+      status: "STARTED",
+      driver: {
+        id: 14843378,
+        name: "Tul Narayan Shrestha",
+        profile_pic: "/b59d83e13171e64fed389d8efe4fff0f/d/enlist/b77b0abb0876deb1c8188e2aa401df062128a5b8.png",
+        rating: "4.65",
+        number: "9845876315",
+        vehicle: {
+          model: "Pulsar 150",
+          color: "black",
+          reg_number: "Ba Pr 02-062 Pa 4197"
+        }
+      },
+      rider: {
+        name: "Romisha shrestha",
+        profile_pic: "/79b2de543c05301f06bbec2f50801581/d/uploads/img/profile/9929985B4DYIs1784075700.png",
+        rating: "5.00"
+      },
+      emergency_number: "100",
+      time_offset: 20700,
+      ride_type: "bike",
+      ride_message: "Towards Destination",
+      is_offline: false,
+      has_dropoff: true
+    };
+
+    const SAMPLE_PATH = {
+      towards_destination: {
+        polyline: "ip|gDcrvgO`AgBt@mAv@mA`BgCV_@\\e@FMPYTo@\\kANk@V_AVgAD]PiAPaB@]?IJgABQZyAHYJCNKRSPUVc@n@iA\\_@LKPKTOZYJMHIz@_ANOr@w@j@o@f@k@f@i@HI\\_@FKRUPWp@y@LO^e@f@o@T_@r@aAFIZc@Xe@\\m@FQRa@f@aABEDIZm@DE\\c@^QR]\\]FKFKRSx@aARKXKR[R_@P]DITc@BGHMQM[YQQi@k@_@a@OWS[QYQ]Yo@c@cAy@kBqAyCmAqC{BiF}BkFgAgCa@{@e@aAe@w@a@k@W_@c@i@a@a@c@e@{BuBcDaD]_@_A{@w@s@a@c@k@k@i@m@i@m@g@q@i@w@[i@Ua@i@}@{@{Ac@w@mBiDq@iAiAmBi@}@iAsBq@kAe@w@OSMICw@RQj@O\\?bC@\\A^C\\E^G^I^M^Q\\S^WFIPQFGNOJQZa@DIFIDKDKFKDMDMDMDMDMBODMLy@D]Bi@BwA?K@W[AU@SAmD?YAg@Ao@Oi@Me@Me@Oq@Yw@YaAc@_@OwAm@cA_@_A_@u@_@}As@yAo@uAm@mBu@gAa@qAi@IEuB}@yB}@m@YwAq@i@OOGa@[_@Wq@_@u@k@{@s@oAcA{AoAiBuAWY_@Y}AkA_A}@gA{@g@a@IJ[Uu@o@UMcBeAo@_@q@YYKYAS@QDUFWNc@?W?o@CmBCSGMMKMQYOMOKUGiG{AkBe@OGKIGICCEICMIWe@qBk@gCo@mCm@cCKe@EMKMg@y@i@m@GQCKCODi@JoBi@?_@DKAY[QQq@c@_@I_@IYGYAYEWw@]g@c@c@g@?g@@SFIFQHKBKCICK@S?C?MBKD]@Ca@Cq@F?",
+        distance: 8061.4,
+        duration: 1120
+      },
+      current_address: {
+        lat: 27.6764045,
+        long: 85.3176432
+      },
+      pickup_address: {
+        lat: 27.6758595,
+        long: 85.3145817,
+        street: "टीथ वेअवेर्स डेन्तल क्लिनिक, उग्रचन्दी मार्ग",
+        arrival_time: 1795076414,
+        has_reached: true
+      },
+      destination_address: {
+        lat: 27.69995411,
+        long: 85.36877453,
+        street: "Khadka Kul Deuta Mandir, Thapagaon, Kathmandu",
+        arrival_time: 1795077656
+      },
+      ride_status: "STARTED",
+      ride_message: "Towards Destination",
+      server_time: 1795076536,
+      driver_id: 14843378,
+      is_offline: false,
+      has_dropoff: true
+    };
+
+    let mapInstance = null;
+    let mapLayerGroup = null;
+    let lastBounds = null;
+    let currentRideId = null;
+    let pollTimer = null;
+
+    const $ = (id) => document.getElementById(id);
+
+    function esc(str) {
+      return String(str ?? "")
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;");
+    }
+
+    function extractRideId(raw) {
+      const trimmed = raw.trim();
+      if (!trimmed) return null;
+      try {
+        const candidate = trimmed.startsWith("http") ? trimmed : `https://${trimmed}`;
+        const u = new URL(candidate);
+        const segments = u.pathname.split("/").filter(Boolean);
+        const idx = segments.indexOf("share-ride");
+        if (idx !== -1 && segments[idx + 1]) {
+          return decodeURIComponent(segments[idx + 1]);
+        }
+        if (u.searchParams.get("id")) {
+          return decodeURIComponent(u.searchParams.get("id"));
+        }
+      } catch (_) {}
+      try {
+        return decodeURIComponent(trimmed);
+      } catch (_) {
+        return trimmed;
+      }
+    }
+
+    function formatUnix(unixSec, offsetSec = 20700) {
+      if (!unixSec) return "—";
+      const d = new Date((Number(unixSec) + Number(offsetSec)) * 1000);
+      const yyyy = d.getUTCFullYear();
+      const mm = String(d.getUTCMonth() + 1).padStart(2, "0");
+      const dd = String(d.getUTCDate()).padStart(2, "0");
+      let hh = d.getUTCHours();
+      const min = String(d.getUTCMinutes()).padStart(2, "0");
+      const ss = String(d.getUTCSeconds()).padStart(2, "0");
+      const ampm = hh >= 12 ? "PM" : "AM";
+      hh = hh % 12 || 12;
+      return `${yyyy}-${mm}-${dd} ${String(hh).padStart(2, "0")}:${min}:${ss} ${ampm}`;
+    }
+
+    function formatTimeOnly(unixSec, offsetSec = 20700) {
+      if (!unixSec) return "—";
+      const d = new Date((Number(unixSec) + Number(offsetSec)) * 1000);
+      let hh = d.getUTCHours();
+      const min = String(d.getUTCMinutes()).padStart(2, "0");
+      const ss = String(d.getUTCSeconds()).padStart(2, "0");
+      const ampm = hh >= 12 ? "PM" : "AM";
+      hh = hh % 12 || 12;
+      return `${String(hh).padStart(2, "0")}:${min}:${ss} ${ampm}`;
+    }
+
+    function formatDuration(sec) {
+      if (sec == null || isNaN(sec)) return "—";
+      const s = Math.max(0, Math.round(Number(sec)));
+      const h = Math.floor(s / 3600);
+      const m = Math.floor((s % 3600) / 60);
+      const rem = s % 60;
+      if (h > 0) return `${h}h ${m}m ${rem}s`;
+      return `${m}m ${rem}s`;
+    }
+
+    function formatOffset(offsetSec) {
+      const sign = offsetSec >= 0 ? "+" : "-";
+      const abs = Math.abs(Number(offsetSec || 0));
+      const h = String(Math.floor(abs / 3600)).padStart(2, "0");
+      const m = String(Math.floor((abs % 3600) / 60)).padStart(2, "0");
+      return `UTC${sign}${h}:${m}`;
+    }
+
+    function decodePolyline(encoded, precision = 5) {
+      if (!encoded) return [];
+      const factor = Math.pow(10, precision);
+      const points = [];
+      let index = 0, lat = 0, lng = 0;
+
+      while (index < encoded.length) {
+        let shift = 0, result = 0, byte;
+        do {
+          byte = encoded.charCodeAt(index++) - 63;
+          result |= (byte & 0x1f) << shift;
+          shift += 5;
+        } while (byte >= 0x20);
+        lat += (result & 1) ? ~(result >> 1) : (result >> 1);
+
+        shift = 0;
+        result = 0;
+        do {
+          byte = encoded.charCodeAt(index++) - 63;
+          result |= (byte & 0x1f) << shift;
+          shift += 5;
+        } while (byte >= 0x20);
+        lng += (result & 1) ? ~(result >> 1) : (result >> 1);
+
+        points.push([lat / factor, lng / factor]);
+      }
+      return points;
+    }
+
+    function initials(name) {
+      return (name || "?")
+        .trim()
+        .split(/\s+/)
+        .slice(0, 2)
+        .map((p) => p[0]?.toUpperCase() || "")
+        .join("");
+    }
+
+    function resolvePicUrl(path) {
+      if (!path) return "";
+      if (path.startsWith("http")) return path;
+      return `https://images.pathao.com${path.startsWith("/") ? "" : "/"}${path}`;
+    }
+
+    async function fetchJsonWithFallback(targetUrl, localProxyUrl) {
+      const attempts = [
+        localProxyUrl,
+        targetUrl,
+        `https://corsproxy.io/?${encodeURIComponent(targetUrl)}`,
+        `https://api.allorigins.win/raw?url=${encodeURIComponent(targetUrl)}`
+      ];
+
+      let lastErr = null;
+      for (const url of attempts) {
+        try {
+          const res = await fetch(url, { headers: { Accept: "application/json" } });
+          if (!res.ok) {
+            lastErr = new Error(`HTTP ${res.status}`);
+            continue;
+          }
+          const text = await res.text();
+          const data = JSON.parse(text);
+          if (data && typeof data === "object" && !data.error) {
+            return data;
+          }
+          if (data && data.error) {
+            lastErr = new Error(data.error);
+          }
+        } catch (err) {
+          lastErr = err;
+        }
+      }
+      throw lastErr || new Error("Request failed");
+    }
+
+    function setStatus(msg, type = "") {
+      const el = $("statusLine");
+      el.textContent = msg;
+      el.className = `status-line ${type}`.trim();
+    }
+
+    function copyText(text, btnEl) {
+      navigator.clipboard.writeText(text).then(() => {
+        if (!btnEl) return;
+        const prev = btnEl.textContent;
+        btnEl.textContent = "Copied";
+        setTimeout(() => (btnEl.textContent = prev), 1200);
+      });
+    }
+
+    function ensureMap() {
+      if (mapInstance) return;
+      mapInstance = L.map("map", { zoomControl: true }).setView([27.685, 85.335], 13);
+      L.tileLayer("https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png", {
+        attribution: "&copy; OpenStreetMap &copy; CARTO",
+        subdomains: "abcd",
+        maxZoom: 20
+      }).addTo(mapInstance);
+      mapLayerGroup = L.layerGroup().addTo(mapInstance);
+    }
+
+    function pinIcon(color, size = 14) {
+      return L.divIcon({
+        className: "",
+        html: `<div style="width:${size}px;height:${size}px;border-radius:50%;background:${color};border:2.5px solid #fff;box-shadow:0 0 12px ${color};"></div>`,
+        iconSize: [size, size],
+        iconAnchor: [size / 2, size / 2]
+      });
+    }
+
+    function renderDashboard(ride, path, rideId) {
+      $("dashboard").classList.add("visible");
+      const offset = ride?.time_offset ?? 20700;
+      const status = (ride?.status || path?.ride_status || "UNKNOWN").toUpperCase();
+      const message = ride?.ride_message || path?.ride_message || "—";
+      const isOffline = ride?.is_offline ?? path?.is_offline ?? false;
+
+      const distMeters = path?.towards_destination?.distance;
+      const remDurSec = path?.towards_destination?.duration;
+      const estTotalSec = ride?.estimated_ride_duration;
+      const etaUnix = path?.destination_address?.arrival_time;
+
+      const statusClass = status === "STARTED" ? "pill-live" : status === "COMPLETED" ? "pill-neutral" : "pill-warn";
+
+      $("telemetryBar").innerHTML = `
+        <div class="stat-box">
+          <div class="stat-label">Ride Status</div>
+          <div class="stat-val">
+            <span class="pill ${statusClass}"><span class="pulse-dot"></span>${esc(status)}</span>
+            <span class="pill ${isOffline ? "pill-red" : "pill-neutral"}">${isOffline ? "OFFLINE" : "ONLINE"}</span>
+          </div>
+          <div class="stat-sub">${esc(message)}</div>
+        </div>
+
+        <div class="stat-box">
+          <div class="stat-label">Remaining Distance</div>
+          <div class="stat-val">${distMeters != null ? (distMeters / 1000).toFixed(2) + " km" : "—"}</div>
+          <div class="stat-sub">${distMeters != null ? Math.round(distMeters) + " m" : "No route telemetry"}</div>
+        </div>
+
+        <div class="stat-box">
+          <div class="stat-label">Remaining ETA</div>
+          <div class="stat-val">${formatDuration(remDurSec)}</div>
+          <div class="stat-sub">Arrival: ${formatTimeOnly(etaUnix, offset)}</div>
+        </div>
+
+        <div class="stat-box">
+          <div class="stat-label">Est. Total Duration</div>
+          <div class="stat-val">${formatDuration(estTotalSec)}</div>
+          <div class="stat-sub">Type: ${esc((ride?.ride_type || "—").toUpperCase())}</div>
+        </div>
+      `;
+
+      // Driver Card
+      const drv = ride?.driver || {};
+      const veh = drv.vehicle || {};
+      const drvPic = resolvePicUrl(drv.profile_pic);
+      $("driverCard").innerHTML = `
+        <div class="section-title">
+          <span>Driver &amp; Vehicle</span>
+          <span class="pill pill-neutral">ID #${esc(drv.id ?? path?.driver_id ?? "—")}</span>
+        </div>
+        <div class="person-row">
+          <div class="avatar">
+            ${drvPic ? `<img src="${esc(drvPic)}" alt="" onerror="this.remove()" />` : ""}
+            <span>${esc(initials(drv.name))}</span>
+          </div>
+          <div class="person-meta">
+            <div class="person-name">
+              <span>${esc(drv.name || "Unknown Driver")}</span>
+              ${drv.rating ? `<span class="pill pill-warn">★ ${esc(drv.rating)}</span>` : ""}
+            </div>
+            <div class="person-sub" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:5px;">
+              <span>${esc(drv.number || "—")}</span>
+              ${drv.number ? `
+                <a class="copy-chip" href="tel:${esc(drv.number)}">Call</a>
+                <button type="button" class="copy-chip" onclick="copyText('${esc(drv.number)}', this)">Copy</button>
+              ` : ""}
+            </div>
+          </div>
+        </div>
+        <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;">
+          <div class="plate-badge">
+            <span>${esc(veh.reg_number || "NO PLATE")}</span>
+            ${veh.reg_number ? `<button type="button" class="copy-chip" onclick="copyText('${esc(veh.reg_number)}', this)">Copy</button>` : ""}
+          </div>
+          <div class="person-sub">${esc(veh.model || "—")} • ${esc((veh.color || "—").toUpperCase())}</div>
+        </div>
+      `;
+
+      // Rider Card
+      const rdr = ride?.rider || {};
+      const rdrPic = resolvePicUrl(rdr.profile_pic);
+      $("riderCard").innerHTML = `
+        <div class="section-title">
+          <span>Passenger</span>
+          <span class="pill pill-red">Emergency: ${esc(ride?.emergency_number || "100")}</span>
+        </div>
+        <div class="person-row">
+          <div class="avatar">
+            ${rdrPic ? `<img src="${esc(rdrPic)}" alt="" onerror="this.remove()" />` : ""}
+            <span>${esc(initials(rdr.name))}</span>
+          </div>
+          <div class="person-meta">
+            <div class="person-name">
+              <span>${esc(rdr.name || "Unknown Rider")}</span>
+              ${rdr.rating ? `<span class="pill pill-live">★ ${esc(rdr.rating)}</span>` : ""}
+            </div>
+            <div class="person-sub">Dropoff Set: ${ride?.has_dropoff ? "Yes" : "No"}</div>
+          </div>
+        </div>
+      `;
+
+      // Route Card
+      const pLat = ride?.pickup_latitude ?? path?.pickup_address?.lat;
+      const pLng = ride?.pickup_longitude ?? path?.pickup_address?.long;
+      const pAddr = ride?.pickup_address || path?.pickup_address?.street || "—";
+      const pArr = path?.pickup_address?.arrival_time;
+      const pReached = path?.pickup_address?.has_reached;
+
+      const cLat = path?.current_address?.lat ?? ride?.current_latitude;
+      const cLng = path?.current_address?.long ?? ride?.current_longitude;
+
+      const dLat = ride?.estimated_dropoff_latitude ?? path?.destination_address?.lat;
+      const dLng = ride?.estimated_dropoff_longitude ?? path?.destination_address?.long;
+      const dAddr = ride?.dropoff_address || path?.destination_address?.street || "—";
+      const dArr = path?.destination_address?.arrival_time;
+
+      const stoppagesHtml = Array.isArray(ride?.stoppages) && ride.stoppages.length
+        ? ride.stoppages.map((s, idx) => `
+            <div class="route-item">
+              <div class="node-col"><span class="node-dot" style="background:var(--amber);"></span></div>
+              <div>
+                <div class="route-title">Stoppage #${idx + 1}</div>
+                <div class="route-addr">${esc(typeof s === "string" ? s : (s.address || s.street || JSON.stringify(s)))}</div>
+              </div>
+            </div>
+          `).join("")
+        : "";
+
+      $("routeCard").innerHTML = `
+        <div class="section-title"><span>Waypoints</span></div>
+        <div class="route-list">
+          <div class="route-item">
+            <div class="node-col"><span class="node-dot pickup"></span></div>
+            <div>
+              <div class="route-title">Pickup ${pReached ? "• Reached" : ""} ${pArr ? "• " + formatTimeOnly(pArr, offset) : ""}</div>
+              <div class="route-addr">${esc(pAddr)}</div>
+              ${pLat != null ? `
+                <div class="route-coords">
+                  <span>${pLat}, ${pLng}</span>
+                  <a class="copy-chip" target="_blank" rel="noopener" href="https://maps.google.com/?q=${pLat},${pLng}">Map ↗</a>
+                </div>` : ""}
+            </div>
+          </div>
+
+          ${stoppagesHtml}
+
+          <div class="route-item">
+            <div class="node-col"><span class="node-dot current"></span></div>
+            <div>
+              <div class="route-title">Live Position</div>
+              <div class="route-coords" style="margin-top:2px;">
+                <span>${cLat != null ? `${cLat}, ${cLng}` : "Unavailable"}</span>
+                ${cLat != null ? `<a class="copy-chip" target="_blank" rel="noopener" href="https://maps.google.com/?q=${cLat},${cLng}">Map ↗</a>` : ""}
+              </div>
+            </div>
+          </div>
+
+          <div class="route-item">
+            <div class="node-col"><span class="node-dot dropoff"></span></div>
+            <div>
+              <div class="route-title">Destination ${dArr ? "• Est. " + formatTimeOnly(dArr, offset) : ""}</div>
+              <div class="route-addr">${esc(dAddr)}</div>
+              ${dLat != null ? `
+                <div class="route-coords">
+                  <span>${dLat}, ${dLng}</span>
+                  <a class="copy-chip" target="_blank" rel="noopener" href="https://maps.google.com/?q=${dLat},${dLng}">Map ↗</a>
+                </div>` : ""}
+            </div>
+          </div>
+        </div>
+      `;
+
+      // External Google Maps Directions link
+      if (pLat != null && dLat != null) {
+        $("extMapsBtn").href = `https://www.google.com/maps/dir/?api=1&origin=${pLat},${pLng}&destination=${dLat},${dLng}&travelmode=two-wheeler`;
+      } else if (cLat != null) {
+        $("extMapsBtn").href = `https://maps.google.com/?q=${cLat},${cLng}`;
+      }
+
+      // Metadata Grid
+      const waitSec = ride?.started_at && ride?.created_at ? ride.started_at - ride.created_at : null;
+      $("rideIdBadge").textContent = rideId;
+      $("rideIdBadge").onclick = () => copyText(rideId, $("rideIdBadge"));
+
+      const metaRows = [
+        ["Created At", formatUnix(ride?.created_at, offset)],
+        ["Started At", formatUnix(ride?.started_at, offset)],
+        ["Pickup Arrival", formatUnix(pArr, offset)],
+        ["Est. Dropoff", formatUnix(dArr, offset)],
+        ["Server Time", formatUnix(path?.server_time, offset)],
+        ["Pickup Wait", waitSec != null ? formatDuration(waitSec) : "—"],
+        ["Timezone Offset", formatOffset(offset)],
+        ["Stoppages", Array.isArray(ride?.stoppages) ? `${ride.stoppages.length}` : "None"],
+        ["Est. Pickup GPS", ride?.estimated_pickup_latitude != null ? `${ride.estimated_pickup_latitude}, ${ride.estimated_pickup_longitude}` : "—"],
+        ["Ride Endpoint GPS", ride?.current_latitude != null ? `${ride.current_latitude}, ${ride.current_longitude}` : "—"]
+      ];
+
+      $("metaGrid").innerHTML = metaRows
+        .map(([k, v]) => `<div class="kv-item"><span class="kv-k">${esc(k)}</span><span class="kv-v">${esc(v)}</span></div>`)
+        .join("");
+
+      // Raw JSON
+      $("rawRideJson").textContent = JSON.stringify(ride, null, 2);
+      $("rawPathJson").textContent = JSON.stringify(path, null, 2);
+
+      // Render Map
+      ensureMap();
+      setTimeout(() => mapInstance.invalidateSize(), 50);
+      mapLayerGroup.clearLayers();
+
+      const boundsPoints = [];
+      const polyStr = path?.towards_destination?.polyline;
+      if (polyStr) {
+        const coords = decodePolyline(polyStr, 5);
+        if (coords.length) {
+          L.polyline(coords, { color: "#e82e3f", weight: 5, opacity: 0.9 }).addTo(mapLayerGroup);
+          coords.forEach((pt) => boundsPoints.push(pt));
+        }
+      }
+
+      if (pLat != null && pLng != null) {
+        L.marker([pLat, pLng], { icon: pinIcon("#10b981", 14) })
+          .bindPopup(`<b>Pickup</b><br>${esc(pAddr)}`)
+          .addTo(mapLayerGroup);
+        boundsPoints.push([pLat, pLng]);
+      }
+
+      if (cLat != null && cLng != null) {
+        L.marker([cLat, cLng], { icon: pinIcon("#38bdf8", 16) })
+          .bindPopup(`<b>Live Location</b><br>${cLat}, ${cLng}`)
+          .addTo(mapLayerGroup);
+        boundsPoints.push([cLat, cLng]);
+      }
+
+      if (dLat != null && dLng != null) {
+        L.marker([dLat, dLng], { icon: pinIcon("#e82e3f", 14) })
+          .bindPopup(`<b>Destination</b><br>${esc(dAddr)}`)
+          .addTo(mapLayerGroup);
+        boundsPoints.push([dLat, dLng]);
+      }
+
+      if (boundsPoints.length) {
+        lastBounds = L.latLngBounds(boundsPoints);
+        mapInstance.fitBounds(lastBounds, { padding: [36, 36] });
+      }
+    }
+
+    async function inspectRide(rawInput) {
+      const rideId = extractRideId(rawInput);
+      if (!rideId) {
+        setStatus("Invalid Pathao URL or Ride ID", "error");
+        return;
+      }
+
+      currentRideId = rideId;
+      const encoded = encodeURIComponent(rideId);
+      const rideUrl = `https://pages.pathao.com/api/ride?id=${encoded}`;
+      const pathUrl = `https://pages.pathao.com/api/ride/path?id=${encoded}`;
+
+      $("fetchBtn").disabled = true;
+      setStatus(`Fetching ${rideId}...`);
+
+      const [rideRes, pathRes] = await Promise.allSettled([
+        fetchJsonWithFallback(rideUrl, `/api/pathao?endpoint=ride&id=${encoded}`),
+        fetchJsonWithFallback(pathUrl, `/api/pathao?endpoint=path&id=${encoded}`)
+      ]);
+
+      $("fetchBtn").disabled = false;
+
+      const rideData = rideRes.status === "fulfilled" ? rideRes.value : null;
+      const pathData = pathRes.status === "fulfilled" ? pathRes.value : null;
+
+      if (!rideData && !pathData) {
+        const reason = rideRes.reason?.message || pathRes.reason?.message || "Blocked or expired";
+        setStatus(`Fetch failed (${reason}) — use Paste JSON or deploy Cloudflare Function`, "error");
+        return;
+      }
+
+      renderDashboard(rideData, pathData, rideId);
+      $("autoPollBtn").style.display = "inline-flex";
+      setStatus(`Synced • ${new Date().toLocaleTimeString()}`, "ok");
+    }
+
+    $("lookupForm").addEventListener("submit", (e) => {
+      e.preventDefault();
+      inspectRide($("urlInput").value);
+    });
+
+    $("fitBoundsBtn").addEventListener("click", () => {
+      if (mapInstance && lastBounds) mapInstance.fitBounds(lastBounds, { padding: [36, 36] });
+    });
+
+    $("loadSampleBtn").addEventListener("click", () => {
+      const sampleUrl = `https://pages.pathao.com/share-ride/${SAMPLE_ID}`;
+      $("urlInput").value = sampleUrl;
+      currentRideId = SAMPLE_ID;
+      renderDashboard(SAMPLE_RIDE, SAMPLE_PATH, SAMPLE_ID);
+      setStatus("Loaded sample telemetry payload", "ok");
+    });
+
+    $("autoPollBtn").addEventListener("click", () => {
+      if (pollTimer) {
+        clearInterval(pollTimer);
+        pollTimer = null;
+        $("autoPollBtn").textContent = "Auto-Sync: OFF";
+      } else {
+        $("autoPollBtn").textContent = "Auto-Sync: 10s";
+        pollTimer = setInterval(() => {
+          if (currentRideId) inspectRide(currentRideId);
+        }, 10000);
+      }
+    });
+
+    $("openManualBtn").addEventListener("click", () => $("manualModal").classList.add("open"));
+    $("closeManualBtn").addEventListener("click", () => $("manualModal").classList.remove("open"));
+    document.addEventListener("keydown", (e) => {
+      if (e.key === "Escape") $("manualModal").classList.remove("open");
+    });
+
+    $("parseManualBtn").addEventListener("click", () => {
+      try {
+        const rRaw = $("manualRideInput").value.trim();
+        const pRaw = $("manualPathInput").value.trim();
+        const rJson = rRaw ? JSON.parse(rRaw) : null;
+        const pJson = pRaw ? JSON.parse(pRaw) : null;
+        if (!rJson && !pJson) return;
+        const id = extractRideId($("urlInput").value) || "MANUAL_PAYLOAD";
+        renderDashboard(rJson, pJson, id);
+        $("manualModal").classList.remove("open");
+        setStatus("Rendered pasted JSON", "ok");
+      } catch (err) {
+        setStatus(`JSON syntax error: ${err.message}`, "error");
+      }
+    });
+
+    // Auto-run if ?url= or ?id= query param is provided
+    const params = new URLSearchParams(window.location.search);
+    const initialTarget = params.get("url") || params.get("id");
+    if (initialTarget) {
+      $("urlInput").value = initialTarget;
+      inspectRide(initialTarget);
+    }
+  </script>
+</body>
+</html>
