@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0" />
   <title>Pathao Ride Telemetry</title>
   <link rel="icon" href="https://pages.pathao.com/favicon.ico" />
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="" />
@@ -27,6 +27,11 @@
 
     * { box-sizing: border-box; margin: 0; padding: 0; }
 
+    html, body {
+      max-width: 100%;
+      overflow-x: hidden;
+    }
+
     body {
       background: var(--bg);
       color: var(--text);
@@ -42,7 +47,7 @@
     .topbar {
       background: var(--panel);
       border-bottom: 1px solid var(--border);
-      padding: 12px 18px;
+      padding: 12px 16px;
       position: sticky;
       top: 0;
       z-index: 500;
@@ -53,19 +58,23 @@
       margin: 0 auto;
       display: flex;
       align-items: center;
-      gap: 12px;
+      gap: 10px;
       flex-wrap: wrap;
     }
 
     .brand {
       display: flex;
       align-items: center;
-      gap: 10px;
+      gap: 9px;
       font-weight: 700;
       font-size: 15px;
       letter-spacing: -0.01em;
       white-space: nowrap;
-      padding-right: 4px;
+      margin-right: auto;
+    }
+
+    @media (min-width: 860px) {
+      .brand { margin-right: 4px; }
     }
 
     .brand img {
@@ -73,11 +82,18 @@
       height: 24px;
       border-radius: 6px;
       display: block;
+      flex-shrink: 0;
+    }
+
+    .header-controls {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
     }
 
     .url-form {
-      flex: 1;
-      min-width: 260px;
+      flex: 1 1 320px;
       display: flex;
       align-items: center;
       background: var(--bg);
@@ -85,6 +101,7 @@
       border-radius: 10px;
       padding: 4px 4px 4px 12px;
       gap: 8px;
+      min-width: 0;
       transition: border-color 0.15s;
     }
 
@@ -101,6 +118,7 @@
       font-family: var(--mono);
       font-size: 13px;
       min-width: 0;
+      width: 100%;
     }
 
     .url-input::placeholder {
@@ -117,6 +135,7 @@
       cursor: pointer;
       display: inline-flex;
       align-items: center;
+      justify-content: center;
       gap: 6px;
       white-space: nowrap;
       transition: background 0.15s, border-color 0.15s, opacity 0.15s;
@@ -176,13 +195,18 @@
       50% { opacity: 0.25; }
     }
 
+    @media (max-width: 859px) {
+      .url-form { order: 3; flex: 1 1 100%; }
+      .header-controls { order: 2; }
+    }
+
     /* Main Workspace */
     .workspace {
       flex: 1;
       max-width: 1440px;
       width: 100%;
       margin: 0 auto;
-      padding: 16px 18px 28px;
+      padding: 16px;
       display: flex;
       flex-direction: column;
       gap: 16px;
@@ -195,12 +219,13 @@
       gap: 12px;
     }
 
-    @media (max-width: 1080px) {
+    @media (max-width: 1120px) {
       .kpi-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
     }
 
     @media (max-width: 640px) {
-      .kpi-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .kpi-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+      .kpi-grid .kpi-card:last-child { grid-column: 1 / -1; }
     }
 
     .kpi-card {
@@ -208,6 +233,7 @@
       border: 1px solid var(--border);
       border-radius: 12px;
       padding: 12px 14px;
+      min-width: 0;
     }
 
     .kpi-label {
@@ -219,12 +245,12 @@
     }
 
     .kpi-value {
-      font-size: 17px;
+      font-size: 16.5px;
       font-weight: 700;
       font-variant-numeric: tabular-nums;
       display: flex;
       align-items: center;
-      gap: 8px;
+      gap: 7px;
       flex-wrap: wrap;
     }
 
@@ -233,6 +259,9 @@
       font-family: var(--mono);
       color: var(--muted);
       margin-top: 3px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
     }
 
     .badge {
@@ -277,13 +306,13 @@
     }
 
     @media (max-width: 980px) {
-      .map-shell { height: 460px; }
+      .map-shell { height: clamp(380px, 56vh, 520px); }
     }
 
     .map-toolbar {
       background: var(--panel);
       border-bottom: 1px solid var(--border);
-      padding: 10px 14px;
+      padding: 9px 12px;
       display: flex;
       justify-content: space-between;
       align-items: center;
@@ -304,7 +333,7 @@
       border: 1px solid var(--border);
       color: var(--muted);
       border-radius: 7px;
-      padding: 4px 10px;
+      padding: 5px 10px;
       font-size: 11.5px;
       font-weight: 600;
       cursor: pointer;
@@ -313,6 +342,7 @@
       align-items: center;
       gap: 5px;
       transition: all 0.14s;
+      user-select: none;
     }
 
     .chip:hover { color: var(--text); border-color: var(--border-hi); }
@@ -325,33 +355,49 @@
     #map {
       flex: 1;
       width: 100%;
-      background: #e5e3df;
+      background: #0e1319;
       z-index: 1;
+    }
+
+    /* Zero-API-Key Dark Mode Tile Filter (keeps markers, routes, and HUD untouched) */
+    .leaflet-layer.dark-osm-tiles {
+      filter: invert(100%) hue-rotate(180deg) brightness(94%) contrast(92%) saturate(78%);
     }
 
     /* Floating Map HUD */
     .map-hud {
       position: absolute;
-      bottom: 14px;
-      left: 14px;
-      right: 14px;
-      max-width: 460px;
+      bottom: 22px;
+      left: 12px;
+      right: 12px;
+      max-width: 440px;
       background: rgba(19, 25, 32, 0.94);
       backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
       border: 1px solid var(--border-hi);
       border-radius: 12px;
-      padding: 11px 14px;
+      padding: 10px 13px;
       z-index: 400;
       display: flex;
       align-items: center;
-      gap: 12px;
+      gap: 11px;
       box-shadow: 0 10px 28px rgba(0, 0, 0, 0.45);
       pointer-events: auto;
     }
 
+    @media (max-width: 540px) {
+      .map-hud {
+        bottom: 24px;
+        left: 10px;
+        right: 10px;
+        max-width: none;
+        padding: 9px 11px;
+      }
+    }
+
     .map-hud-icon {
-      width: 38px;
-      height: 38px;
+      width: 36px;
+      height: 36px;
       border-radius: 9px;
       background: var(--panel-alt);
       border: 1px solid var(--border);
@@ -362,8 +408,8 @@
     }
 
     .map-hud-icon img {
-      width: 26px;
-      height: 26px;
+      width: 24px;
+      height: 24px;
       object-fit: contain;
     }
 
@@ -379,7 +425,7 @@
     }
 
     .map-hud-dest {
-      font-size: 13px;
+      font-size: 12.5px;
       font-weight: 600;
       color: var(--text);
       white-space: nowrap;
@@ -425,7 +471,7 @@
       width: 30px;
       height: 30px;
       object-fit: contain;
-      filter: drop-shadow(0 3px 6px rgba(0, 0, 0, 0.55));
+      filter: drop-shadow(0 3px 6px rgba(0, 0, 0, 0.65));
       transform-origin: center center;
       will-change: transform;
       position: relative;
@@ -442,6 +488,7 @@
       display: flex;
       flex-direction: column;
       gap: 14px;
+      min-width: 0;
     }
 
     .card {
@@ -449,6 +496,7 @@
       border: 1px solid var(--border);
       border-radius: 14px;
       padding: 16px;
+      min-width: 0;
     }
 
     .card-head {
@@ -457,6 +505,7 @@
       align-items: center;
       margin-bottom: 12px;
       gap: 8px;
+      flex-wrap: wrap;
     }
 
     .card-title {
@@ -510,6 +559,7 @@
       align-items: center;
       gap: 8px;
       flex-wrap: wrap;
+      word-break: break-word;
     }
 
     .action-row {
@@ -525,7 +575,7 @@
       border: 1px solid rgba(16, 185, 129, 0.38);
       color: var(--green);
       border-radius: 7px;
-      padding: 4px 10px;
+      padding: 5px 10px;
       font-family: var(--mono);
       font-size: 12px;
       font-weight: 700;
@@ -559,7 +609,7 @@
       border-radius: 8px;
       padding: 5px 10px;
       font-family: var(--mono);
-      font-size: 13px;
+      font-size: 12.5px;
       font-weight: 700;
       letter-spacing: 0.03em;
     }
@@ -626,7 +676,7 @@
       font-size: 11.5px;
       font-family: var(--mono);
       color: var(--muted);
-      margin-top: 3px;
+      margin-top: 4px;
       display: flex;
       align-items: center;
       gap: 8px;
@@ -636,8 +686,12 @@
     /* Bottom Telemetry Table */
     .meta-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
-      gap: 6px 20px;
+      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+      gap: 4px 20px;
+    }
+
+    @media (max-width: 480px) {
+      .meta-grid { grid-template-columns: 1fr; }
     }
 
     .meta-row {
@@ -646,11 +700,11 @@
       align-items: baseline;
       padding: 7px 0;
       border-bottom: 1px solid rgba(255, 255, 255, 0.05);
-      gap: 10px;
+      gap: 12px;
     }
 
-    .meta-k { font-size: 12px; color: var(--muted); }
-    .meta-v { font-size: 12px; font-family: var(--mono); font-weight: 600; text-align: right; }
+    .meta-k { font-size: 12px; color: var(--muted); white-space: nowrap; }
+    .meta-v { font-size: 12px; font-family: var(--mono); font-weight: 600; text-align: right; word-break: break-all; }
 
     /* Photo Lightbox */
     .lightbox-bg {
@@ -764,12 +818,13 @@
         <button type="submit" class="btn btn-primary" id="fetchBtn">Track</button>
       </form>
 
-      <div class="sync-status" id="statusLine">Kathmandu, Nepal</div>
-
-      <button type="button" class="btn btn-subtle live-on" id="liveToggleBtn" style="display:none;">
-        <span class="dot-pulse"></span><span>1s Live</span>
-      </button>
-      <button type="button" class="btn btn-subtle" id="openManualBtn">JSON Input</button>
+      <div class="header-controls">
+        <div class="sync-status" id="statusLine">Kathmandu, Nepal</div>
+        <button type="button" class="btn btn-subtle live-on" id="liveToggleBtn" style="display:none;">
+          <span class="dot-pulse"></span><span>1s Live</span>
+        </button>
+        <button type="button" class="btn btn-subtle" id="openManualBtn">JSON Input</button>
+      </div>
     </div>
   </header>
 
@@ -1240,8 +1295,7 @@
     }
 
     function applyAvatarPhoto(containerId, initId, picUrl, captionLabel, cacheRef) {
-      if (!picUrl) return cacheRef;
-      if (picUrl === cacheRef) return cacheRef;
+      if (!picUrl || picUrl === cacheRef) return cacheRef;
 
       const box = $(containerId);
       const oldImg = box.querySelector("img");
@@ -1260,7 +1314,6 @@
       };
 
       img.onerror = () => {
-        // Fallback through proxy if direct CDN is blocked by network/ISP
         if (!img.dataset.retried) {
           img.dataset.retried = "1";
           img.src = `https://corsproxy.io/?${encodeURIComponent(picUrl)}`;
@@ -1294,7 +1347,6 @@
 
     function parseRelayBody(rawText) {
       const parsed = JSON.parse(rawText);
-      // Unwrap allorigins /get wrapper if present
       if (parsed && typeof parsed.contents === "string" && parsed.status) {
         return JSON.parse(parsed.contents);
       }
@@ -1333,7 +1385,6 @@
         }
       }
 
-      // Race all transports concurrently on initial connect so the fastest responds immediately
       const racers = transports.map((url, idx) =>
         fetchWithTimeout(url, 8000).then((data) => {
           preferredTransportIdx = idx;
@@ -1378,11 +1429,11 @@
         keepBuffer: 4
       }).addTo(mapInstance);
 
-      darkTileLayer = L.tileLayer("https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png", {
-        attribution: "&copy; OpenStreetMap &copy; CARTO",
-        subdomains: "abcd",
-        maxZoom: 20,
-        keepBuffer: 4
+      darkTileLayer = L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
+        attribution: "&copy; OpenStreetMap • Kathmandu, Nepal",
+        maxZoom: 19,
+        keepBuffer: 4,
+        className: "dark-osm-tiles"
       });
 
       routeCasing = L.polyline([], {
@@ -1400,6 +1451,12 @@
         lineCap: "round",
         lineJoin: "round"
       }).addTo(mapInstance);
+
+      if (typeof ResizeObserver !== "undefined") {
+        new ResizeObserver(() => {
+          if (mapInstance) mapInstance.invalidateSize({ pan: false });
+        }).observe($("map"));
+      }
     }
 
     function pickupPinIcon() {
@@ -1814,10 +1871,10 @@
       ensureMap();
 
       const boundsPoints = [];
-      const polyStr = path?.towards_destination?.polyline || "";
-      if (polyStr !== lastPolylineEncoded) {
+      const polyStr = path?.towards_destination?.polyline;
+      if (polyStr && polyStr !== lastPolylineEncoded) {
         lastPolylineEncoded = polyStr;
-        decodedRouteCoords = polyStr ? decodePolyline(polyStr, 5) : [];
+        decodedRouteCoords = decodePolyline(polyStr, 5);
         routeCasing.setLatLngs(decodedRouteCoords);
         routePolyline.setLatLngs(decodedRouteCoords);
       }
@@ -1923,6 +1980,10 @@
           const ms = Math.round(performance.now() - t0);
           setStatus(`LIVE • ${ms}ms`, "ok");
         }
+      } catch (_) {
+        if (sessionToken === pollSessionToken) {
+          setStatus("Retrying connection...", "err");
+        }
       } finally {
         inFlight = false;
         if (isManualStart) $("fetchBtn").disabled = false;
@@ -1981,7 +2042,6 @@
       runPollCycle(token, true);
     }
 
-    // Initialize Kathmandu map immediately on load
     ensureMap();
 
     $("lookupForm").addEventListener("submit", (e) => {
@@ -2092,6 +2152,7 @@
         initialFitDone = false;
         lastRideStatus = null;
         lastPolylineEncoded = null;
+        decodedRouteCoords = [];
         resetAvatars();
         patchDashboard(rJson, pJson, id);
         $("manualModal").classList.remove("open");
