@@ -38,7 +38,7 @@
       -webkit-font-smoothing: antialiased;
     }
 
-    /* Top Navigation & Search Header */
+    /* Top Header */
     .topbar {
       background: var(--panel);
       border-bottom: 1px solid var(--border);
@@ -336,7 +336,7 @@
       bottom: 14px;
       left: 14px;
       right: 14px;
-      max-width: 440px;
+      max-width: 450px;
       background: rgba(19, 25, 32, 0.94);
       backdrop-filter: blur(10px);
       border: 1px solid var(--border-hi);
@@ -363,8 +363,8 @@
     }
 
     .map-hud-icon img {
-      width: 28px;
-      height: 28px;
+      width: 26px;
+      height: 26px;
       object-fit: contain;
     }
 
@@ -398,8 +398,8 @@
 
     /* Rotating Top-Down Bike Marker */
     .bike-marker-wrap {
-      width: 38px;
-      height: 38px;
+      width: 42px;
+      height: 42px;
       display: flex;
       align-items: center;
       justify-content: center;
@@ -408,12 +408,18 @@
 
     .bike-marker-halo {
       position: absolute;
-      width: 32px;
-      height: 32px;
+      width: 34px;
+      height: 34px;
       border-radius: 50%;
-      background: rgba(232, 46, 63, 0.22);
-      border: 1.5px solid rgba(232, 46, 63, 0.55);
+      background: rgba(232, 46, 63, 0.24);
+      border: 1.5px solid rgba(232, 46, 63, 0.6);
       animation: radar 1.8s ease-out infinite;
+    }
+
+    .bike-marker-halo.completed {
+      background: rgba(16, 185, 129, 0.24);
+      border-color: rgba(16, 185, 129, 0.75);
+      animation: none;
     }
 
     .bike-marker-img {
@@ -732,19 +738,19 @@
       </div>
 
       <div class="kpi-card">
-        <div class="kpi-label">Remaining Distance</div>
+        <div class="kpi-label" id="vDistLabel">Remaining Distance</div>
         <div class="kpi-value" id="vDistKm">—</div>
         <div class="kpi-sub" id="vDistMeters">—</div>
       </div>
 
       <div class="kpi-card">
-        <div class="kpi-label">Remaining ETA</div>
+        <div class="kpi-label" id="vEtaLabel">Remaining ETA</div>
         <div class="kpi-value" id="vEtaDur">—</div>
         <div class="kpi-sub" id="vEtaClock">—</div>
       </div>
 
       <div class="kpi-card">
-        <div class="kpi-label">Est. Total Duration</div>
+        <div class="kpi-label" id="vTotalLabel">Est. Total Duration</div>
         <div class="kpi-value" id="vTotalDur">—</div>
         <div class="kpi-sub" id="vPickupWait">—</div>
       </div>
@@ -774,6 +780,7 @@
           </div>
           <div class="chip-group">
             <button type="button" class="chip active" id="followLiveBtn">Follow Bike</button>
+            <button type="button" class="chip" id="zoomBikeBtn">Zoom Bike</button>
             <button type="button" class="chip" id="fitBoundsBtn">Fit Route</button>
             <button type="button" class="chip" id="focusKtmBtn">KTM</button>
             <button type="button" class="chip" id="focusNepalBtn">Nepal</button>
@@ -787,6 +794,7 @@
         <div class="map-hud">
           <div class="map-hud-icon">
             <img
+              id="hudStatusIcon"
               src="https://pages.pathao.com/_next/static/media/bike.1-yit1h3vi0-y.svg"
               alt=""
               onerror="this.style.display='none'"
@@ -883,7 +891,7 @@
             <div class="wp-item">
               <div class="wp-marker"><span class="wp-dot live"></span></div>
               <div>
-                <div class="wp-label">Live GPS Position</div>
+                <div class="wp-label">Live Bike GPS</div>
                 <div class="wp-sub" style="margin-top:2px;">
                   <span id="vLiveCoords">—</span>
                   <a class="chip" id="vLiveMapLink" target="_blank" rel="noopener" style="display:none;">Map ↗</a>
@@ -894,6 +902,7 @@
             <div class="wp-item">
               <div class="wp-marker">
                 <img
+                  id="vDropWaypointIcon"
                   src="https://pages.pathao.com/_next/static/media/ic_dropoff.0bdg7c1u_cl-r.svg"
                   alt=""
                   style="width:16px;height:20px;object-fit:contain;"
@@ -951,7 +960,8 @@
     const ASSETS = {
       bikeSide: "https://pages.pathao.com/_next/static/media/bike.1-yit1h3vi0-y.svg",
       bikeTop: "https://pages.pathao.com/_next/static/media/bike-white.3a99f9yreynrd.svg",
-      dropoffPin: "https://pages.pathao.com/_next/static/media/ic_dropoff.0bdg7c1u_cl-r.svg"
+      dropoffPin: "https://pages.pathao.com/_next/static/media/ic_dropoff.0bdg7c1u_cl-r.svg",
+      tripCompleted: "https://pages.pathao.com/_next/static/media/ic_trip_completed.3zn7rc4_atzm9.svg"
     };
 
     const $ = (id) => document.getElementById(id);
@@ -966,6 +976,7 @@
     let pickupMarker = null;
     let currentMarker = null;
     let currentMarkerImgEl = null;
+    let currentMarkerHaloEl = null;
     let dropoffMarker = null;
     let lastBounds = null;
     let lastPolylineEncoded = null;
@@ -974,6 +985,7 @@
     let lastStoppagesSig = null;
     let initialFitDone = false;
     let followLive = true;
+    let lastRideStatus = null;
 
     // Smooth 60fps Marker Animation State
     let markerAnimRaf = null;
@@ -1300,12 +1312,12 @@
       });
     }
 
-    function bikeMarkerIcon(headingDeg = 0) {
+    function bikeMarkerIcon(headingDeg = 0, isCompleted = false) {
       return L.divIcon({
         className: "",
         html: `
           <div class="bike-marker-wrap">
-            <div class="bike-marker-halo"></div>
+            <div class="bike-marker-halo${isCompleted ? " completed" : ""}"></div>
             <img
               class="bike-marker-img"
               src="${ASSETS.bikeTop}"
@@ -1313,13 +1325,21 @@
               style="transform: rotate(${headingDeg}deg);"
             />
           </div>`,
-        iconSize: [38, 38],
-        iconAnchor: [19, 19],
-        popupAnchor: [0, -18]
+        iconSize: [42, 42],
+        iconAnchor: [21, 21],
+        popupAnchor: [0, -20]
       });
     }
 
-    function smoothMoveLiveMarker(targetLat, targetLng) {
+    function syncMarkerDomRefs() {
+      if (!currentMarker) return;
+      const el = currentMarker.getElement();
+      if (!el) return;
+      currentMarkerImgEl = el.querySelector(".bike-marker-img");
+      currentMarkerHaloEl = el.querySelector(".bike-marker-halo");
+    }
+
+    function smoothMoveLiveMarker(targetLat, targetLng, isCompleted = false) {
       const nextPos = [Number(targetLat), Number(targetLng)];
       if (isNaN(nextPos[0]) || isNaN(nextPos[1])) return;
 
@@ -1331,15 +1351,19 @@
         lastGpsFix = { lat: nextPos[0], lng: nextPos[1], time: nowMs };
 
         currentMarker = L.marker(nextPos, {
-          icon: bikeMarkerIcon(currentHeadingDeg),
+          icon: bikeMarkerIcon(currentHeadingDeg, isCompleted),
           zIndexOffset: 1000
         })
-          .bindPopup(`<b>Live Rider</b><br>${nextPos[0].toFixed(6)}, ${nextPos[1].toFixed(6)}`)
+          .bindPopup(`<b>${isCompleted ? "Bike (Trip Completed)" : "Live Bike"}</b><br>${nextPos[0].toFixed(6)}, ${nextPos[1].toFixed(6)}`)
           .addTo(mapInstance);
 
-        const el = currentMarker.getElement();
-        if (el) currentMarkerImgEl = el.querySelector(".bike-marker-img");
+        syncMarkerDomRefs();
         return;
+      }
+
+      syncMarkerDomRefs();
+      if (currentMarkerHaloEl) {
+        currentMarkerHaloEl.classList.toggle("completed", isCompleted);
       }
 
       const startPos = currentAnimatedLatLng || [
@@ -1353,18 +1377,22 @@
         const dtSec = Math.max(0.2, (nowMs - lastGpsFix.time) / 1000);
         const stepMeters = haversineMeters(lastGpsFix.lat, lastGpsFix.lng, nextPos[0], nextPos[1]);
         const speedKmh = (stepMeters / dtSec) * 3.6;
-        $("vHeadingSpeed").textContent =
-          stepMeters >= 0.8
+        $("vHeadingSpeed").textContent = isCompleted
+          ? "Arrived • 0.0 km/h"
+          : stepMeters >= 0.8
             ? `${Math.round(currentHeadingDeg)}° • ${speedKmh.toFixed(1)} km/h`
             : `${Math.round(currentHeadingDeg)}° • Stationary`;
         lastGpsFix = { lat: nextPos[0], lng: nextPos[1], time: nowMs };
       }
 
+      currentMarker.setPopupContent(
+        `<b>${isCompleted ? "Bike (Trip Completed)" : "Live Bike"}</b><br>${nextPos[0].toFixed(6)}, ${nextPos[1].toFixed(6)}`
+      );
+
       if (distMeters < 0.4) return;
 
       const startHeading = currentHeadingDeg;
       const targetHeading = computeBearing(startPos[0], startPos[1], nextPos[0], nextPos[1]);
-      currentMarker.setPopupContent(`<b>Live Rider</b><br>${nextPos[0].toFixed(6)}, ${nextPos[1].toFixed(6)}`);
 
       if (markerAnimRaf) cancelAnimationFrame(markerAnimRaf);
       const animStart = performance.now();
@@ -1380,9 +1408,7 @@
 
         currentMarker.setLatLng(currentAnimatedLatLng);
 
-        if (!currentMarkerImgEl && currentMarker.getElement()) {
-          currentMarkerImgEl = currentMarker.getElement().querySelector(".bike-marker-img");
-        }
+        if (!currentMarkerImgEl) syncMarkerDomRefs();
         if (currentMarkerImgEl) {
           currentMarkerImgEl.style.transform = `rotate(${currentHeadingDeg.toFixed(1)}deg)`;
         }
@@ -1401,6 +1427,19 @@
       }
     }
 
+    function zoomToBikeExact(lat, lng, animate = true) {
+      if (!mapInstance || lat == null || lng == null) return;
+      const pos = [Number(lat), Number(lng)];
+      if (isNaN(pos[0]) || isNaN(pos[1])) return;
+      followLive = true;
+      $("followLiveBtn").classList.add("active");
+      if (animate) {
+        mapInstance.flyTo(pos, 18, { duration: 0.75 });
+      } else {
+        mapInstance.setView(pos, 18);
+      }
+    }
+
     function patchDashboard(ride, path, rideId) {
       latestRideJson = ride;
       latestPathJson = path;
@@ -1411,42 +1450,74 @@
 
       const offset = ride?.time_offset ?? 20700;
       const status = (ride?.status || path?.ride_status || "UNKNOWN").toUpperCase();
+      const isCompleted = status === "COMPLETED";
+      const justCompleted = isCompleted && lastRideStatus !== "COMPLETED";
       const message = ride?.ride_message || path?.ride_message || "—";
       const isOffline = ride?.is_offline ?? path?.is_offline ?? false;
 
       const distMeters = path?.towards_destination?.distance;
       const remDurSec = path?.towards_destination?.duration;
       const estTotalSec = ride?.estimated_ride_duration;
-      const etaUnix = path?.destination_address?.arrival_time;
-      const waitSec = ride?.started_at && ride?.created_at ? ride.started_at - ride.created_at : null;
+      const actualTripSec =
+        ride?.ended_at && ride?.started_at ? ride.ended_at - ride.started_at : null;
+      const etaUnix = ride?.ended_at || path?.destination_address?.arrival_time;
+      const waitSec =
+        ride?.started_at && ride?.created_at ? ride.started_at - ride.created_at : null;
 
       // KPI Strip
       $("vStatusBadge").textContent = status;
       $("vStatusBadge").className = `badge ${
-        status === "STARTED" ? "badge-green" : status === "COMPLETED" ? "badge-muted" : "badge-amber"
+        status === "STARTED" || isCompleted ? "badge-green" : "badge-amber"
       }`;
       $("vOnlineBadge").textContent = isOffline ? "OFFLINE" : "ONLINE";
       $("vOnlineBadge").className = `badge ${isOffline ? "badge-red" : "badge-muted"}`;
       $("vRideMsg").textContent = message;
 
-      $("vDistKm").textContent = distMeters != null ? `${(distMeters / 1000).toFixed(2)} km` : "—";
-      $("vDistMeters").textContent = distMeters != null ? `${Math.round(distMeters).toLocaleString()} m` : "—";
+      if (isCompleted && distMeters == null) {
+        $("vDistLabel").textContent = "Remaining Distance";
+        $("vDistKm").textContent = "0.00 km";
+        $("vDistMeters").textContent = "Arrived at dropoff";
+      } else {
+        $("vDistLabel").textContent = "Remaining Distance";
+        $("vDistKm").textContent = distMeters != null ? `${(distMeters / 1000).toFixed(2)} km` : "—";
+        $("vDistMeters").textContent = distMeters != null ? `${Math.round(distMeters).toLocaleString()} m` : "—";
+      }
 
-      $("vEtaDur").textContent = formatDuration(remDurSec);
-      $("vEtaClock").textContent = `ETA ${formatTimeOnly(etaUnix, offset)}`;
+      if (isCompleted) {
+        $("vEtaLabel").textContent = "Trip Ended";
+        $("vEtaDur").textContent = formatTimeOnly(etaUnix, offset);
+        $("vEtaClock").textContent = "Destination reached";
+      } else {
+        $("vEtaLabel").textContent = "Remaining ETA";
+        $("vEtaDur").textContent = formatDuration(remDurSec);
+        $("vEtaClock").textContent = `ETA ${formatTimeOnly(etaUnix, offset)}`;
+      }
 
-      $("vTotalDur").textContent = formatDuration(estTotalSec);
-      $("vPickupWait").textContent = waitSec != null ? `Pickup wait: ${formatDuration(waitSec)}` : "—";
+      if (actualTripSec != null) {
+        $("vTotalLabel").textContent = "Actual Trip Duration";
+        $("vTotalDur").textContent = formatDuration(actualTripSec);
+        $("vPickupWait").textContent =
+          estTotalSec != null ? `Est: ${formatDuration(estTotalSec)}` : "—";
+      } else {
+        $("vTotalLabel").textContent = "Est. Total Duration";
+        $("vTotalDur").textContent = formatDuration(estTotalSec);
+        $("vPickupWait").textContent =
+          waitSec != null ? `Pickup wait: ${formatDuration(waitSec)}` : "—";
+      }
 
       $("vRideType").textContent = (ride?.ride_type || "—").toUpperCase();
-      if (!$("vHeadingSpeed").textContent || $("vHeadingSpeed").textContent === "—") {
+      if (isCompleted) {
+        $("vHeadingSpeed").textContent = "Arrived • 0.0 km/h";
+      } else if (!$("vHeadingSpeed").textContent || $("vHeadingSpeed").textContent === "—") {
         $("vHeadingSpeed").textContent = "Tracking GPS";
       }
 
       // Floating Map HUD
+      $("hudStatusIcon").src = isCompleted ? ASSETS.tripCompleted : ASSETS.bikeSide;
       $("hudStatusText").textContent = message;
-      $("hudEtaText").textContent =
-        remDurSec != null
+      $("hudEtaText").textContent = isCompleted
+        ? formatTimeOnly(etaUnix, offset)
+        : remDurSec != null
           ? `${Math.max(1, Math.round(remDurSec / 60))} min • ${formatTimeOnly(etaUnix, offset)}`
           : "—";
 
@@ -1527,20 +1598,34 @@
       $("vEmergencyBtn").href = `tel:${emerg}`;
       $("vDropoffFlag").textContent = `Dropoff Set: ${ride?.has_dropoff ? "Yes" : "No"}`;
 
-      // Waypoints
+      // Waypoints & Coordinates
       const pLat = ride?.pickup_latitude ?? path?.pickup_address?.lat;
       const pLng = ride?.pickup_longitude ?? path?.pickup_address?.long;
       const pAddr = ride?.pickup_address || path?.pickup_address?.street || "—";
       const pArr = path?.pickup_address?.arrival_time;
       const pReached = path?.pickup_address?.has_reached;
 
-      const cLat = path?.current_address?.lat ?? ride?.current_latitude;
-      const cLng = path?.current_address?.long ?? ride?.current_longitude;
+      // Live real-time bike location prioritizes /api/ride/path current_address
+      const cLat =
+        path?.current_address?.lat ??
+        ride?.dropoff_latitude ??
+        ride?.current_latitude;
+      const cLng =
+        path?.current_address?.long ??
+        ride?.dropoff_longitude ??
+        ride?.current_longitude;
 
-      const dLat = ride?.estimated_dropoff_latitude ?? path?.destination_address?.lat;
-      const dLng = ride?.estimated_dropoff_longitude ?? path?.destination_address?.long;
+      const dLat =
+        ride?.dropoff_latitude ??
+        path?.destination_address?.lat ??
+        ride?.estimated_dropoff_latitude;
+      const dLng =
+        ride?.dropoff_longitude ??
+        path?.destination_address?.long ??
+        ride?.estimated_dropoff_longitude;
       const dAddr = ride?.dropoff_address || path?.destination_address?.street || "—";
-      const dArr = path?.destination_address?.arrival_time;
+      const dArr = path?.destination_address?.arrival_time ?? ride?.ended_at;
+      const dReached = path?.destination_address?.has_reached ?? isCompleted;
 
       $("hudDestText").textContent = dAddr;
 
@@ -1581,7 +1666,11 @@
         $("vLiveMapLink").style.display = "none";
       }
 
-      $("vDropTitle").textContent = `Destination${dArr ? " • Est. " + formatTimeOnly(dArr, offset) : ""}`;
+      if ($("vDropWaypointIcon") && $("vDropWaypointIcon").tagName === "IMG") {
+        $("vDropWaypointIcon").src = isCompleted ? ASSETS.tripCompleted : ASSETS.dropoffPin;
+      }
+
+      $("vDropTitle").textContent = `Destination${dReached ? " • Reached" : ""}${dArr ? " • " + (dReached ? "" : "Est. ") + formatTimeOnly(dArr, offset) : ""}`;
       $("vDropAddr").textContent = dAddr;
       if (dLat != null && dLng != null) {
         $("vDropCoords").textContent = `${dLat}, ${dLng}`;
@@ -1595,21 +1684,23 @@
         $("extMapsBtn").href = `https://maps.google.com/?q=${cLat},${cLng}`;
       }
 
-      // Session Timestamps & Exact Fields
+      // Session Timestamps & Exact Coordinates
       $("rideIdBadge").textContent = rideId;
       $("rideIdBadge").onclick = () => copyText(rideId, $("rideIdBadge"));
 
       const metaRows = [
         ["Created At", formatUnix(ride?.created_at, offset)],
         ["Started At", formatUnix(ride?.started_at, offset)],
+        ["Ended At", formatUnix(ride?.ended_at, offset)],
         ["Pickup Arrival", formatUnix(pArr, offset)],
-        ["Est. Dropoff", formatUnix(dArr, offset)],
+        ["Destination Arrival", formatUnix(dArr, offset)],
         ["Server Time", formatUnix(path?.server_time, offset)],
         ["Timezone", formatOffset(offset)],
         ["Driver Phone", nepalPhone.display],
-        ["Stoppages", Array.isArray(ride?.stoppages) ? `${ride.stoppages.length}` : "None"],
-        ["Est. Pickup GPS", ride?.estimated_pickup_latitude != null ? `${ride.estimated_pickup_latitude}, ${ride.estimated_pickup_longitude}` : "—"],
-        ["Ride Endpoint GPS", ride?.current_latitude != null ? `${ride.current_latitude}, ${ride.current_longitude}` : "—"]
+        ["Pickup Wait", waitSec != null ? formatDuration(waitSec) : "—"],
+        ["Actual Dropoff GPS", ride?.dropoff_latitude != null ? `${ride.dropoff_latitude}, ${ride.dropoff_longitude}` : "—"],
+        ["Est. Dropoff GPS", ride?.estimated_dropoff_latitude != null ? `${ride.estimated_dropoff_latitude}, ${ride.estimated_dropoff_longitude}` : "—"],
+        ["Est. Pickup GPS", ride?.estimated_pickup_latitude != null ? `${ride.estimated_pickup_latitude}, ${ride.estimated_pickup_longitude}` : "—"]
       ];
 
       $("metaGrid").innerHTML = metaRows
@@ -1619,7 +1710,7 @@
       // Map Layers
       ensureMap();
       if (wasHidden) {
-        setTimeout(() => mapInstance.invalidateSize(), 40);
+        mapInstance.invalidateSize();
       }
 
       const boundsPoints = [];
@@ -1657,17 +1748,28 @@
       }
 
       if (cLat != null && cLng != null) {
-        smoothMoveLiveMarker(cLat, cLng);
+        smoothMoveLiveMarker(cLat, cLng, isCompleted);
         boundsPoints.push([Number(cLat), Number(cLng)]);
       }
 
       if (boundsPoints.length) {
         lastBounds = L.latLngBounds(boundsPoints);
+      }
+
+      // Zoom behavior: when ride is COMPLETED, zoom directly onto exact realtime bike position
+      if (isCompleted && cLat != null && cLng != null) {
         if (!initialFitDone) {
           initialFitDone = true;
-          mapInstance.fitBounds(lastBounds, { padding: [46, 46], maxZoom: 16 });
+          zoomToBikeExact(cLat, cLng, false);
+        } else if (justCompleted) {
+          zoomToBikeExact(cLat, cLng, true);
         }
+      } else if (boundsPoints.length && !initialFitDone) {
+        initialFitDone = true;
+        mapInstance.fitBounds(lastBounds, { padding: [46, 46], maxZoom: 16 });
       }
+
+      lastRideStatus = status;
     }
 
     function stopPollingLoop() {
@@ -1740,6 +1842,7 @@
 
       currentRideId = rideId;
       initialFitDone = false;
+      lastRideStatus = null;
       lastPolylineEncoded = null;
       decodedRouteCoords = [];
       lastDriverPic = null;
@@ -1747,6 +1850,7 @@
       lastStoppagesSig = null;
       currentAnimatedLatLng = null;
       currentMarkerImgEl = null;
+      currentMarkerHaloEl = null;
       lastGpsFix = null;
 
       if (pickupMarker) { pickupMarker.remove(); pickupMarker = null; }
@@ -1790,6 +1894,12 @@
       }
     });
 
+    $("zoomBikeBtn").addEventListener("click", () => {
+      if (currentAnimatedLatLng) {
+        zoomToBikeExact(currentAnimatedLatLng[0], currentAnimatedLatLng[1], true);
+      }
+    });
+
     $("layerStreetBtn").addEventListener("click", () => {
       ensureMap();
       if (!mapInstance.hasLayer(streetTileLayer)) {
@@ -1812,6 +1922,8 @@
 
     $("fitBoundsBtn").addEventListener("click", () => {
       if (mapInstance && lastBounds) {
+        followLive = false;
+        $("followLiveBtn").classList.remove("active");
         mapInstance.fitBounds(lastBounds, { padding: [46, 46], maxZoom: 16 });
       }
     });
@@ -1846,6 +1958,7 @@
         if (!rJson && !pJson) return;
         const id = extractRideId($("urlInput").value) || "RIDE_SESSION";
         initialFitDone = false;
+        lastRideStatus = null;
         lastPolylineEncoded = null;
         patchDashboard(rJson, pJson, id);
         $("manualModal").classList.remove("open");
