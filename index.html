@@ -183,12 +183,10 @@
       width: 100%;
       margin: 0 auto;
       padding: 16px 18px 28px;
-      display: none;
+      display: flex;
       flex-direction: column;
       gap: 16px;
     }
-
-    .workspace.active { display: flex; }
 
     /* KPI Strip */
     .kpi-grid {
@@ -227,6 +225,7 @@
       display: flex;
       align-items: center;
       gap: 8px;
+      flex-wrap: wrap;
     }
 
     .kpi-sub {
@@ -272,7 +271,7 @@
       border-radius: 14px;
       overflow: hidden;
       position: relative;
-      height: 640px;
+      height: 650px;
       display: flex;
       flex-direction: column;
     }
@@ -336,7 +335,7 @@
       bottom: 14px;
       left: 14px;
       right: 14px;
-      max-width: 450px;
+      max-width: 460px;
       background: rgba(19, 25, 32, 0.94);
       backdrop-filter: blur(10px);
       border: 1px solid var(--border-hi);
@@ -471,29 +470,36 @@
     .profile-row {
       display: flex;
       align-items: center;
-      gap: 12px;
+      gap: 13px;
     }
 
     .avatar {
-      width: 48px;
-      height: 48px;
+      width: 56px;
+      height: 56px;
       border-radius: 50%;
       background: var(--panel-alt);
-      border: 1px solid var(--border-hi);
+      border: 1.5px solid var(--border-hi);
       display: flex;
       align-items: center;
       justify-content: center;
       font-weight: 700;
-      font-size: 15px;
+      font-size: 16px;
       color: var(--text);
       overflow: hidden;
       flex-shrink: 0;
+      position: relative;
+    }
+
+    .avatar.has-photo {
+      cursor: zoom-in;
+      border-color: var(--pathao);
     }
 
     .avatar img {
       width: 100%;
       height: 100%;
       object-fit: cover;
+      display: block;
     }
 
     .profile-info { flex: 1; min-width: 0; }
@@ -630,7 +636,7 @@
     /* Bottom Telemetry Table */
     .meta-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
       gap: 6px 20px;
     }
 
@@ -646,7 +652,49 @@
     .meta-k { font-size: 12px; color: var(--muted); }
     .meta-v { font-size: 12px; font-family: var(--mono); font-weight: 600; text-align: right; }
 
-    /* Modal */
+    /* Photo Lightbox */
+    .lightbox-bg {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.82);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+      z-index: 1200;
+      cursor: zoom-out;
+    }
+
+    .lightbox-bg.open { display: flex; }
+
+    .lightbox-card {
+      background: var(--panel);
+      border: 1px solid var(--border-hi);
+      border-radius: 14px;
+      padding: 14px;
+      max-width: 420px;
+      width: 100%;
+      text-align: center;
+      cursor: default;
+    }
+
+    .lightbox-card img {
+      width: 100%;
+      max-height: 360px;
+      object-fit: contain;
+      border-radius: 10px;
+      background: var(--bg);
+      display: block;
+    }
+
+    .lightbox-caption {
+      margin-top: 10px;
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text);
+    }
+
+    /* Direct Payload Modal */
     .modal-bg {
       position: fixed;
       inset: 0;
@@ -731,10 +779,10 @@
       <div class="kpi-card">
         <div class="kpi-label">Ride Status</div>
         <div class="kpi-value">
-          <span class="badge badge-green" id="vStatusBadge">—</span>
+          <span class="badge badge-muted" id="vStatusBadge">READY</span>
           <span class="badge badge-muted" id="vOnlineBadge">—</span>
         </div>
-        <div class="kpi-sub" id="vRideMsg">—</div>
+        <div class="kpi-sub" id="vRideMsg">Enter Pathao share-ride URL</div>
       </div>
 
       <div class="kpi-card">
@@ -802,10 +850,10 @@
           </div>
           <div class="map-hud-body">
             <div class="map-hud-top">
-              <span id="hudStatusText">Towards Destination</span>
+              <span id="hudStatusText">Kathmandu Valley</span>
               <span id="hudEtaText" style="font-family:var(--mono);color:var(--text);">—</span>
             </div>
-            <div class="map-hud-dest" id="hudDestText">—</div>
+            <div class="map-hud-dest" id="hudDestText">Awaiting ride link</div>
           </div>
         </div>
       </div>
@@ -933,7 +981,15 @@
     </section>
   </main>
 
-  <!-- Direct JSON Modal -->
+  <!-- Full-Resolution Photo Lightbox -->
+  <div class="lightbox-bg" id="photoLightbox">
+    <div class="lightbox-card">
+      <img id="lightboxImg" referrerpolicy="no-referrer" alt="" />
+      <div class="lightbox-caption" id="lightboxCaption"></div>
+    </div>
+  </div>
+
+  <!-- Direct Payload Modal -->
   <div class="modal-bg" id="manualModal">
     <div class="modal-box">
       <div class="card-head" style="margin-bottom:0;">
@@ -956,6 +1012,8 @@
       [26.347, 80.058],
       [30.447, 88.201]
     ];
+
+    const CDN_BASE = "https://cdn.pathao.com";
 
     const ASSETS = {
       bikeSide: "https://pages.pathao.com/_next/static/media/bike.1-yit1h3vi0-y.svg",
@@ -1177,20 +1235,73 @@
 
     function resolvePicUrl(path) {
       if (!path) return "";
-      if (path.startsWith("http")) return path;
-      return `https://images.pathao.com${path.startsWith("/") ? "" : "/"}${path}`;
+      if (path.startsWith("http://") || path.startsWith("https://")) return path;
+      return `${CDN_BASE}${path.startsWith("/") ? "" : "/"}${path}`;
+    }
+
+    function applyAvatarPhoto(containerId, initId, picUrl, captionLabel, cacheRef) {
+      if (!picUrl) return cacheRef;
+      if (picUrl === cacheRef) return cacheRef;
+
+      const box = $(containerId);
+      const oldImg = box.querySelector("img");
+      if (oldImg) oldImg.remove();
+
+      const img = document.createElement("img");
+      img.referrerPolicy = "no-referrer";
+      img.alt = captionLabel || "";
+      img.src = picUrl;
+
+      img.onload = () => {
+        $(initId).style.display = "none";
+        box.classList.add("has-photo");
+        box.title = "Click to view full photo";
+        box.onclick = () => openPhotoLightbox(picUrl, captionLabel);
+      };
+
+      img.onerror = () => {
+        // Fallback through proxy if direct CDN is blocked by network/ISP
+        if (!img.dataset.retried) {
+          img.dataset.retried = "1";
+          img.src = `https://corsproxy.io/?${encodeURIComponent(picUrl)}`;
+          return;
+        }
+        img.remove();
+        $(initId).style.display = "";
+        box.classList.remove("has-photo");
+        box.onclick = null;
+      };
+
+      box.prepend(img);
+      return picUrl;
+    }
+
+    function openPhotoLightbox(url, caption) {
+      $("lightboxImg").src = url;
+      $("lightboxCaption").textContent = caption || "";
+      $("photoLightbox").classList.add("open");
     }
 
     function buildTransports(targetUrl, localProxyUrl) {
       return [
         localProxyUrl,
-        targetUrl,
         `https://corsproxy.io/?${encodeURIComponent(targetUrl)}`,
-        `https://api.allorigins.win/raw?url=${encodeURIComponent(targetUrl)}`
+        `https://api.allorigins.win/get?url=${encodeURIComponent(targetUrl)}`,
+        `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(targetUrl)}`,
+        targetUrl
       ];
     }
 
-    async function fetchWithTimeout(url, timeoutMs = 2200) {
+    function parseRelayBody(rawText) {
+      const parsed = JSON.parse(rawText);
+      // Unwrap allorigins /get wrapper if present
+      if (parsed && typeof parsed.contents === "string" && parsed.status) {
+        return JSON.parse(parsed.contents);
+      }
+      return parsed;
+    }
+
+    async function fetchWithTimeout(url, timeoutMs = 6000) {
       const ctrl = new AbortController();
       const timer = setTimeout(() => ctrl.abort(), timeoutMs);
       try {
@@ -1201,9 +1312,9 @@
         });
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const text = await res.text();
-        const data = JSON.parse(text);
+        const data = parseRelayBody(text);
         if (!data || typeof data !== "object" || data.error) {
-          throw new Error(data?.error || "Invalid response");
+          throw new Error(data?.error || "Invalid payload");
         }
         return data;
       } finally {
@@ -1216,23 +1327,21 @@
 
       if (preferredTransportIdx !== null && transports[preferredTransportIdx]) {
         try {
-          return await fetchWithTimeout(transports[preferredTransportIdx], 2000);
+          return await fetchWithTimeout(transports[preferredTransportIdx], 3500);
         } catch (_) {
           preferredTransportIdx = null;
         }
       }
 
-      let lastErr = null;
-      for (let i = 0; i < transports.length; i++) {
-        try {
-          const data = await fetchWithTimeout(transports[i], 2400);
-          preferredTransportIdx = i;
+      // Race all transports concurrently on initial connect so the fastest responds immediately
+      const racers = transports.map((url, idx) =>
+        fetchWithTimeout(url, 8000).then((data) => {
+          preferredTransportIdx = idx;
           return data;
-        } catch (err) {
-          lastErr = err;
-        }
-      }
-      throw lastErr || new Error("Connection failed");
+        })
+      );
+
+      return await Promise.any(racers);
     }
 
     function setStatus(msg, type = "") {
@@ -1256,7 +1365,7 @@
 
       mapInstance = L.map("map", {
         center: KATHMANDU_CENTER,
-        zoom: 14,
+        zoom: 13,
         maxBounds: NEPAL_BOUNDS,
         maxBoundsViscosity: 0.75,
         zoomControl: true,
@@ -1444,10 +1553,6 @@
       latestRideJson = ride;
       latestPathJson = path;
 
-      const dash = $("dashboard");
-      const wasHidden = !dash.classList.contains("visible");
-      if (wasHidden) dash.classList.add("visible");
-
       const offset = ride?.time_offset ?? 20700;
       const status = (ride?.status || path?.ride_status || "UNKNOWN").toUpperCase();
       const isCompleted = status === "COMPLETED";
@@ -1529,15 +1634,14 @@
       $("vDriverInit").textContent = initials(drv.name);
 
       const drvPic = resolvePicUrl(drv.profile_pic);
-      if (drvPic && drvPic !== lastDriverPic) {
-        lastDriverPic = drvPic;
-        const oldImg = $("vDriverAvatar").querySelector("img");
-        if (oldImg) oldImg.remove();
-        const img = document.createElement("img");
-        img.src = drvPic;
-        img.alt = "";
-        img.onerror = () => img.remove();
-        $("vDriverAvatar").prepend(img);
+      if (drvPic) {
+        lastDriverPic = applyAvatarPhoto(
+          "vDriverAvatar",
+          "vDriverInit",
+          drvPic,
+          `Driver • ${drv.name || ""}`,
+          lastDriverPic
+        );
       }
 
       if (drv.rating) {
@@ -1575,15 +1679,14 @@
       $("vRiderInit").textContent = initials(rdr.name);
 
       const rdrPic = resolvePicUrl(rdr.profile_pic);
-      if (rdrPic && rdrPic !== lastRiderPic) {
-        lastRiderPic = rdrPic;
-        const oldImg = $("vRiderAvatar").querySelector("img");
-        if (oldImg) oldImg.remove();
-        const img = document.createElement("img");
-        img.src = rdrPic;
-        img.alt = "";
-        img.onerror = () => img.remove();
-        $("vRiderAvatar").prepend(img);
+      if (rdrPic) {
+        lastRiderPic = applyAvatarPhoto(
+          "vRiderAvatar",
+          "vRiderInit",
+          rdrPic,
+          `Passenger • ${rdr.name || ""}`,
+          lastRiderPic
+        );
       }
 
       if (rdr.rating) {
@@ -1605,7 +1708,6 @@
       const pArr = path?.pickup_address?.arrival_time;
       const pReached = path?.pickup_address?.has_reached;
 
-      // Live real-time bike location prioritizes /api/ride/path current_address
       const cLat =
         path?.current_address?.lat ??
         ride?.dropoff_latitude ??
@@ -1700,7 +1802,8 @@
         ["Pickup Wait", waitSec != null ? formatDuration(waitSec) : "—"],
         ["Actual Dropoff GPS", ride?.dropoff_latitude != null ? `${ride.dropoff_latitude}, ${ride.dropoff_longitude}` : "—"],
         ["Est. Dropoff GPS", ride?.estimated_dropoff_latitude != null ? `${ride.estimated_dropoff_latitude}, ${ride.estimated_dropoff_longitude}` : "—"],
-        ["Est. Pickup GPS", ride?.estimated_pickup_latitude != null ? `${ride.estimated_pickup_latitude}, ${ride.estimated_pickup_longitude}` : "—"]
+        ["Est. Pickup GPS", ride?.estimated_pickup_latitude != null ? `${ride.estimated_pickup_latitude}, ${ride.estimated_pickup_longitude}` : "—"],
+        ["Initial Endpoint GPS", ride?.current_latitude != null ? `${ride.current_latitude}, ${ride.current_longitude}` : "—"]
       ];
 
       $("metaGrid").innerHTML = metaRows
@@ -1709,9 +1812,6 @@
 
       // Map Layers
       ensureMap();
-      if (wasHidden) {
-        mapInstance.invalidateSize();
-      }
 
       const boundsPoints = [];
       const polyStr = path?.towards_destination?.polyline || "";
@@ -1756,7 +1856,7 @@
         lastBounds = L.latLngBounds(boundsPoints);
       }
 
-      // Zoom behavior: when ride is COMPLETED, zoom directly onto exact realtime bike position
+      // Zoom directly onto realtime bike location when completed
       if (isCompleted && cLat != null && cLng != null) {
         if (!initialFitDone) {
           initialFitDone = true;
@@ -1816,8 +1916,7 @@
         const pathData = pathRes.status === "fulfilled" ? pathRes.value : null;
 
         if (!rideData && !pathData) {
-          const reason = rideRes.reason?.message || pathRes.reason?.message || "Unavailable";
-          setStatus(`Error: ${reason}`, "err");
+          setStatus("Retrying connection...", "err");
         } else {
           patchDashboard(rideData || latestRideJson, pathData || latestPathJson, currentRideId);
           $("liveToggleBtn").style.display = "inline-flex";
@@ -1829,6 +1928,20 @@
         if (isManualStart) $("fetchBtn").disabled = false;
         scheduleNextPoll(sessionToken);
       }
+    }
+
+    function resetAvatars() {
+      lastDriverPic = null;
+      lastRiderPic = null;
+      ["vDriverAvatar", "vRiderAvatar"].forEach((id) => {
+        const box = $(id);
+        const img = box.querySelector("img");
+        if (img) img.remove();
+        box.classList.remove("has-photo");
+        box.onclick = null;
+      });
+      $("vDriverInit").style.display = "";
+      $("vRiderInit").style.display = "";
     }
 
     function startTracking(rawInput) {
@@ -1845,13 +1958,14 @@
       lastRideStatus = null;
       lastPolylineEncoded = null;
       decodedRouteCoords = [];
-      lastDriverPic = null;
-      lastRiderPic = null;
       lastStoppagesSig = null;
       currentAnimatedLatLng = null;
       currentMarkerImgEl = null;
       currentMarkerHaloEl = null;
       lastGpsFix = null;
+      latestRideJson = null;
+      latestPathJson = null;
+      resetAvatars();
 
       if (pickupMarker) { pickupMarker.remove(); pickupMarker = null; }
       if (currentMarker) { currentMarker.remove(); currentMarker = null; }
@@ -1867,9 +1981,18 @@
       runPollCycle(token, true);
     }
 
+    // Initialize Kathmandu map immediately on load
+    ensureMap();
+
     $("lookupForm").addEventListener("submit", (e) => {
       e.preventDefault();
       startTracking($("urlInput").value);
+    });
+
+    $("urlInput").addEventListener("paste", () => {
+      setTimeout(() => {
+        if ($("urlInput").value.trim()) startTracking($("urlInput").value);
+      }, 15);
     });
 
     $("liveToggleBtn").addEventListener("click", () => {
@@ -1942,10 +2065,19 @@
       mapInstance.fitBounds(NEPAL_BOUNDS, { padding: [16, 16] });
     });
 
+    $("photoLightbox").addEventListener("click", (e) => {
+      if (e.target === $("photoLightbox")) {
+        $("photoLightbox").classList.remove("open");
+      }
+    });
+
     $("openManualBtn").addEventListener("click", () => $("manualModal").classList.add("open"));
     $("closeManualBtn").addEventListener("click", () => $("manualModal").classList.remove("open"));
     document.addEventListener("keydown", (e) => {
-      if (e.key === "Escape") $("manualModal").classList.remove("open");
+      if (e.key === "Escape") {
+        $("manualModal").classList.remove("open");
+        $("photoLightbox").classList.remove("open");
+      }
     });
 
     $("parseManualBtn").addEventListener("click", () => {
@@ -1960,6 +2092,7 @@
         initialFitDone = false;
         lastRideStatus = null;
         lastPolylineEncoded = null;
+        resetAvatars();
         patchDashboard(rJson, pJson, id);
         $("manualModal").classList.remove("open");
         setStatus("Loaded", "ok");
