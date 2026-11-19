@@ -3,24 +3,24 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Pathao Live Telemetry — Kathmandu &amp; Nepal</title>
-  <link rel="icon" type="image/png" href="favicon.png" />
+  <title>Pathao Ride Telemetry</title>
+  <link rel="icon" href="https://pages.pathao.com/favicon.ico" />
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="" />
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
   <style>
     :root {
-      --bg: #080a0f;
-      --surface: rgba(17, 21, 30, 0.76);
-      --surface-elevated: rgba(25, 31, 44, 0.86);
-      --border: rgba(255, 255, 255, 0.08);
-      --border-strong: rgba(255, 255, 255, 0.16);
-      --text: #f3f5f8;
-      --text-dim: #8b95a7;
-      --accent: #e82e3f;
-      --accent-glow: rgba(232, 46, 63, 0.28);
+      --bg: #0c1015;
+      --panel: #131920;
+      --panel-alt: #182029;
+      --border: #232d38;
+      --border-hi: #32404f;
+      --text: #f1f5f9;
+      --muted: #8a99ad;
+      --pathao: #e82e3f;
+      --pathao-hover: #f33b4c;
       --green: #10b981;
-      --cyan: #0ea5e9;
       --amber: #f59e0b;
+      --sky: #38bdf8;
       --mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
       --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Inter, sans-serif;
     }
@@ -28,10 +28,7 @@
     * { box-sizing: border-box; margin: 0; padding: 0; }
 
     body {
-      background:
-        radial-gradient(circle at 12% 8%, rgba(232, 46, 63, 0.12), transparent 36%),
-        radial-gradient(circle at 88% 14%, rgba(14, 165, 233, 0.08), transparent 38%),
-        var(--bg);
+      background: var(--bg);
       color: var(--text);
       font-family: var(--sans);
       min-height: 100vh;
@@ -41,339 +38,448 @@
       -webkit-font-smoothing: antialiased;
     }
 
-    .container {
-      width: 100%;
-      max-width: 1260px;
-      margin: 0 auto;
-      padding: 18px 16px 32px;
-      flex: 1;
+    /* Top Navigation & Search Header */
+    .topbar {
+      background: var(--panel);
+      border-bottom: 1px solid var(--border);
+      padding: 12px 18px;
+      position: sticky;
+      top: 0;
+      z-index: 500;
     }
 
-    /* Search Pill */
-    .search-shell {
-      background: var(--surface);
-      backdrop-filter: blur(20px);
-      -webkit-backdrop-filter: blur(20px);
-      border: 1px solid var(--border);
-      border-radius: 999px;
-      padding: 6px 6px 6px 18px;
+    .topbar-inner {
+      max-width: 1440px;
+      margin: 0 auto;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .brand {
       display: flex;
       align-items: center;
       gap: 10px;
-      box-shadow: 0 16px 40px rgba(0, 0, 0, 0.45);
-      transition: border-color 0.2s, box-shadow 0.2s;
+      font-weight: 700;
+      font-size: 15px;
+      letter-spacing: -0.01em;
+      white-space: nowrap;
+      padding-right: 4px;
     }
 
-    .search-shell:focus-within {
-      border-color: rgba(232, 46, 63, 0.55);
-      box-shadow: 0 16px 40px rgba(0, 0, 0, 0.55), 0 0 0 3px var(--accent-glow);
+    .brand img {
+      width: 24px;
+      height: 24px;
+      border-radius: 6px;
+      display: block;
     }
 
-    .brand-dot {
-      width: 10px;
-      height: 10px;
-      border-radius: 50%;
-      background: var(--accent);
-      box-shadow: 0 0 12px var(--accent);
-      flex-shrink: 0;
+    .url-form {
+      flex: 1;
+      min-width: 260px;
+      display: flex;
+      align-items: center;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 4px 4px 4px 12px;
+      gap: 8px;
+      transition: border-color 0.15s;
     }
 
-    .search-input {
+    .url-form:focus-within {
+      border-color: var(--pathao);
+    }
+
+    .url-input {
       flex: 1;
       background: transparent;
       border: none;
       outline: none;
       color: var(--text);
-      font-size: 14px;
       font-family: var(--mono);
+      font-size: 13px;
       min-width: 0;
     }
 
-    .search-input::placeholder { color: var(--text-dim); font-family: var(--sans); }
-
-    .btn {
-      border: none;
-      outline: none;
-      cursor: pointer;
-      border-radius: 999px;
-      font-weight: 600;
-      font-size: 13px;
-      padding: 10px 20px;
-      transition: transform 0.12s, background 0.18s, opacity 0.18s;
-      display: inline-flex;
-      align-items: center;
-      gap: 7px;
-      white-space: nowrap;
+    .url-input::placeholder {
+      color: #5c6b7d;
+      font-family: var(--sans);
     }
 
-    .btn:active { transform: scale(0.97); }
+    .btn {
+      border: 1px solid transparent;
+      border-radius: 8px;
+      font-size: 12.5px;
+      font-weight: 600;
+      padding: 8px 14px;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      white-space: nowrap;
+      transition: background 0.15s, border-color 0.15s, opacity 0.15s;
+    }
+
     .btn:disabled { opacity: 0.5; cursor: not-allowed; }
 
     .btn-primary {
-      background: var(--accent);
+      background: var(--pathao);
       color: #fff;
-      box-shadow: 0 4px 16px var(--accent-glow);
     }
 
-    .btn-primary:hover:not(:disabled) { background: #f23849; }
+    .btn-primary:hover:not(:disabled) {
+      background: var(--pathao-hover);
+    }
 
-    .btn-ghost {
-      background: rgba(255, 255, 255, 0.06);
+    .btn-subtle {
+      background: var(--panel-alt);
+      border-color: var(--border);
       color: var(--text);
-      border: 1px solid var(--border);
-      padding: 7px 14px;
-      font-size: 12px;
     }
 
-    .btn-ghost:hover:not(:disabled) { background: rgba(255, 255, 255, 0.11); }
-    .btn-ghost.active {
-      background: rgba(16, 185, 129, 0.16);
+    .btn-subtle:hover:not(:disabled) {
+      border-color: var(--border-hi);
+      background: #1f2935;
+    }
+
+    .btn-subtle.live-on {
       border-color: rgba(16, 185, 129, 0.45);
       color: var(--green);
+      background: rgba(16, 185, 129, 0.09);
     }
 
-    .toolbar {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      flex-wrap: wrap;
-      gap: 10px;
-      margin-top: 12px;
-      padding: 0 6px;
-    }
-
-    .toolbar-group {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      flex-wrap: wrap;
-    }
-
-    .status-line {
-      font-size: 12px;
-      color: var(--text-dim);
+    .sync-status {
       font-family: var(--mono);
+      font-size: 11.5px;
+      color: var(--muted);
       display: flex;
       align-items: center;
-      gap: 8px;
+      gap: 6px;
+      white-space: nowrap;
     }
 
-    .status-line.error { color: #f87171; }
-    .status-line.ok { color: var(--green); }
+    .sync-status.ok { color: var(--green); }
+    .sync-status.err { color: #f87171; }
 
-    /* Dashboard */
-    .dashboard {
-      margin-top: 16px;
+    .dot-pulse {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: currentColor;
+      animation: blink 1.2s infinite;
+    }
+
+    @keyframes blink {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.25; }
+    }
+
+    /* Main Workspace */
+    .workspace {
+      flex: 1;
+      max-width: 1440px;
+      width: 100%;
+      margin: 0 auto;
+      padding: 16px 18px 28px;
       display: none;
       flex-direction: column;
       gap: 16px;
     }
 
-    .dashboard.visible { display: flex; }
+    .workspace.active { display: flex; }
 
-    .glass-card {
-      background: var(--surface);
-      backdrop-filter: blur(18px);
-      -webkit-backdrop-filter: blur(18px);
-      border: 1px solid var(--border);
-      border-radius: 22px;
-      padding: 18px;
-    }
-
-    /* Telemetry Strip */
-    .telemetry-bar {
+    /* KPI Strip */
+    .kpi-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(175px, 1fr));
+      grid-template-columns: repeat(5, minmax(0, 1fr));
       gap: 12px;
     }
 
-    .stat-box {
-      background: var(--surface-elevated);
-      border: 1px solid var(--border);
-      border-radius: 16px;
-      padding: 13px 15px;
+    @media (max-width: 1080px) {
+      .kpi-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
     }
 
-    .stat-label {
+    @media (max-width: 640px) {
+      .kpi-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    }
+
+    .kpi-card {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 12px 14px;
+    }
+
+    .kpi-label {
       font-size: 11px;
       text-transform: uppercase;
-      letter-spacing: 0.06em;
-      color: var(--text-dim);
+      letter-spacing: 0.05em;
+      color: var(--muted);
       margin-bottom: 4px;
     }
 
-    .stat-val {
+    .kpi-value {
       font-size: 17px;
       font-weight: 700;
       font-variant-numeric: tabular-nums;
       display: flex;
       align-items: center;
-      gap: 7px;
-      flex-wrap: wrap;
+      gap: 8px;
     }
 
-    .stat-sub {
+    .kpi-sub {
       font-size: 11.5px;
-      color: var(--text-dim);
       font-family: var(--mono);
+      color: var(--muted);
       margin-top: 3px;
     }
 
-    .pill {
+    .badge {
       display: inline-flex;
       align-items: center;
-      gap: 6px;
-      padding: 3px 10px;
-      border-radius: 999px;
+      gap: 5px;
+      padding: 2px 8px;
+      border-radius: 6px;
       font-size: 11px;
       font-weight: 700;
-      letter-spacing: 0.04em;
+      letter-spacing: 0.03em;
       text-transform: uppercase;
     }
 
-    .pill-live { background: rgba(16, 185, 129, 0.16); color: var(--green); border: 1px solid rgba(16, 185, 129, 0.35); }
-    .pill-warn { background: rgba(245, 158, 11, 0.16); color: var(--amber); border: 1px solid rgba(245, 158, 11, 0.35); }
-    .pill-red  { background: rgba(232, 46, 63, 0.16); color: #ff6b78; border: 1px solid rgba(232, 46, 63, 0.35); }
-    .pill-neutral { background: rgba(255, 255, 255, 0.07); color: var(--text-dim); border: 1px solid var(--border); }
+    .badge-green { background: rgba(16, 185, 129, 0.14); color: var(--green); border: 1px solid rgba(16, 185, 129, 0.3); }
+    .badge-amber { background: rgba(245, 158, 11, 0.14); color: var(--amber); border: 1px solid rgba(245, 158, 11, 0.3); }
+    .badge-red   { background: rgba(232, 46, 63, 0.14); color: #ff6b78; border: 1px solid rgba(232, 46, 63, 0.3); }
+    .badge-muted { background: var(--panel-alt); color: var(--muted); border: 1px solid var(--border); }
 
-    .pulse-dot {
-      width: 7px;
-      height: 7px;
-      border-radius: 50%;
-      background: currentColor;
-      animation: pulse 1.4s infinite;
-    }
-
-    @keyframes pulse {
-      0%, 100% { opacity: 1; transform: scale(1); }
-      50% { opacity: 0.35; transform: scale(1.35); }
-    }
-
-    /* Split Grid */
-    .split-grid {
+    /* Main Split Layout */
+    .main-grid {
       display: grid;
-      grid-template-columns: 1.4fr 1fr;
+      grid-template-columns: 1.45fr 1fr;
       gap: 16px;
+      align-items: start;
     }
 
-    @media (max-width: 940px) {
-      .split-grid { grid-template-columns: 1fr; }
+    @media (max-width: 980px) {
+      .main-grid { grid-template-columns: 1fr; }
     }
 
-    /* Map */
-    .map-card {
-      padding: 0;
+    /* Map Container */
+    .map-shell {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 14px;
       overflow: hidden;
+      position: relative;
+      height: 640px;
       display: flex;
       flex-direction: column;
-      min-height: 470px;
     }
 
-    .map-header {
-      padding: 12px 16px;
+    @media (max-width: 980px) {
+      .map-shell { height: 460px; }
+    }
+
+    .map-toolbar {
+      background: var(--panel);
+      border-bottom: 1px solid var(--border);
+      padding: 10px 14px;
       display: flex;
       justify-content: space-between;
       align-items: center;
-      border-bottom: 1px solid var(--border);
       gap: 8px;
       flex-wrap: wrap;
+      z-index: 10;
+    }
+
+    .chip-group {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      flex-wrap: wrap;
+    }
+
+    .chip {
+      background: var(--panel-alt);
+      border: 1px solid var(--border);
+      color: var(--muted);
+      border-radius: 7px;
+      padding: 4px 10px;
+      font-size: 11.5px;
+      font-weight: 600;
+      cursor: pointer;
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      transition: all 0.14s;
+    }
+
+    .chip:hover { color: var(--text); border-color: var(--border-hi); }
+    .chip.active {
+      background: var(--pathao);
+      border-color: var(--pathao);
+      color: #fff;
     }
 
     #map {
       flex: 1;
       width: 100%;
-      min-height: 420px;
       background: #e5e3df;
       z-index: 1;
     }
 
-    .leaflet-container { font-family: var(--sans); }
-    .leaflet-popup-content-wrapper, .leaflet-popup-tip {
-      background: #131823;
-      color: var(--text);
-      border: 1px solid var(--border-strong);
-      border-radius: 12px;
-    }
-
-    /* Live Rider Marker */
-    .live-beacon {
-      position: relative;
-      width: 26px;
-      height: 26px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-    }
-
-    .live-beacon-ring {
+    /* Floating Map HUD */
+    .map-hud {
       position: absolute;
-      inset: 0;
-      border-radius: 50%;
-      background: rgba(232, 46, 63, 0.32);
-      animation: ripple 1.5s ease-out infinite;
+      bottom: 14px;
+      left: 14px;
+      right: 14px;
+      max-width: 440px;
+      background: rgba(19, 25, 32, 0.94);
+      backdrop-filter: blur(10px);
+      border: 1px solid var(--border-hi);
+      border-radius: 12px;
+      padding: 11px 14px;
+      z-index: 400;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      box-shadow: 0 10px 28px rgba(0, 0, 0, 0.45);
+      pointer-events: auto;
     }
 
-    .live-beacon-core {
-      width: 16px;
-      height: 16px;
-      border-radius: 50%;
-      background: #e82e3f;
-      border: 2.5px solid #ffffff;
-      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.45);
+    .map-hud-icon {
+      width: 38px;
+      height: 38px;
+      border-radius: 9px;
+      background: var(--panel-alt);
+      border: 1px solid var(--border);
       display: flex;
       align-items: center;
       justify-content: center;
-      transform-origin: center;
+      flex-shrink: 0;
     }
 
-    .live-beacon-arrow {
-      width: 0;
-      height: 0;
-      border-left: 3.5px solid transparent;
-      border-right: 3.5px solid transparent;
-      border-bottom: 6px solid #fff;
-      transform: translateY(-1px);
+    .map-hud-icon img {
+      width: 28px;
+      height: 28px;
+      object-fit: contain;
     }
 
-    @keyframes ripple {
-      0% { transform: scale(0.75); opacity: 0.9; }
-      100% { transform: scale(2.1); opacity: 0; }
-    }
-
-    /* Entities & Route */
-    .stack { display: flex; flex-direction: column; gap: 16px; }
-
-    .section-title {
-      font-size: 11.5px;
-      font-weight: 700;
-      text-transform: uppercase;
-      letter-spacing: 0.08em;
-      color: var(--text-dim);
-      margin-bottom: 12px;
+    .map-hud-body { flex: 1; min-width: 0; }
+    .map-hud-top {
       display: flex;
       justify-content: space-between;
       align-items: center;
       gap: 8px;
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--green);
     }
 
-    .person-row {
+    .map-hud-dest {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      margin-top: 2px;
+    }
+
+    .leaflet-popup-content-wrapper, .leaflet-popup-tip {
+      background: var(--panel);
+      color: var(--text);
+      border: 1px solid var(--border-hi);
+      border-radius: 10px;
+    }
+
+    /* Rotating Top-Down Bike Marker */
+    .bike-marker-wrap {
+      width: 38px;
+      height: 38px;
       display: flex;
       align-items: center;
+      justify-content: center;
+      position: relative;
+    }
+
+    .bike-marker-halo {
+      position: absolute;
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      background: rgba(232, 46, 63, 0.22);
+      border: 1.5px solid rgba(232, 46, 63, 0.55);
+      animation: radar 1.8s ease-out infinite;
+    }
+
+    .bike-marker-img {
+      width: 30px;
+      height: 30px;
+      object-fit: contain;
+      filter: drop-shadow(0 3px 6px rgba(0, 0, 0, 0.55));
+      transform-origin: center center;
+      will-change: transform;
+      position: relative;
+      z-index: 2;
+    }
+
+    @keyframes radar {
+      0% { transform: scale(0.85); opacity: 0.85; }
+      100% { transform: scale(1.75); opacity: 0; }
+    }
+
+    /* Right Column Cards */
+    .side-col {
+      display: flex;
+      flex-direction: column;
       gap: 14px;
     }
 
+    .card {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 16px;
+    }
+
+    .card-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 12px;
+      gap: 8px;
+    }
+
+    .card-title {
+      font-size: 11.5px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--muted);
+    }
+
+    .profile-row {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
     .avatar {
-      width: 50px;
-      height: 50px;
+      width: 48px;
+      height: 48px;
       border-radius: 50%;
-      background: linear-gradient(135deg, rgba(232, 46, 63, 0.3), rgba(14, 165, 233, 0.25));
-      border: 1px solid var(--border-strong);
+      background: var(--panel-alt);
+      border: 1px solid var(--border-hi);
       display: flex;
       align-items: center;
       justify-content: center;
       font-weight: 700;
-      font-size: 16px;
-      color: #fff;
+      font-size: 15px;
+      color: var(--text);
       overflow: hidden;
       flex-shrink: 0;
     }
@@ -384,184 +490,161 @@
       object-fit: cover;
     }
 
-    .person-meta { flex: 1; min-width: 0; }
-    .person-name { font-size: 16px; font-weight: 700; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
-    .person-sub { font-size: 12.5px; color: var(--text-dim); margin-top: 2px; font-family: var(--mono); }
-
-    .call-btn {
-      background: rgba(16, 185, 129, 0.16);
-      border: 1px solid rgba(16, 185, 129, 0.42);
-      color: var(--green);
-      border-radius: 999px;
-      padding: 4px 11px;
-      font-size: 11.5px;
+    .profile-info { flex: 1; min-width: 0; }
+    .profile-name {
+      font-size: 15.5px;
       font-weight: 700;
-      font-family: var(--mono);
-      cursor: pointer;
-      text-decoration: none;
-      display: inline-flex;
-      align-items: center;
-      gap: 5px;
-      transition: background 0.15s;
-    }
-
-    .call-btn:hover { background: rgba(16, 185, 129, 0.26); }
-
-    .plate-badge {
-      display: inline-flex;
-      align-items: center;
-      gap: 8px;
-      margin-top: 12px;
-      padding: 7px 12px;
-      border-radius: 10px;
-      background: rgba(255, 255, 255, 0.05);
-      border: 1px solid var(--border-strong);
-      font-family: var(--mono);
-      font-size: 13px;
-      font-weight: 700;
-      letter-spacing: 0.04em;
-    }
-
-    .copy-chip {
-      background: rgba(255, 255, 255, 0.08);
-      border: 1px solid var(--border);
-      color: var(--text-dim);
-      border-radius: 999px;
-      padding: 3px 9px;
-      font-size: 11px;
-      font-family: var(--mono);
-      cursor: pointer;
-      text-decoration: none;
-      display: inline-flex;
-      align-items: center;
-      gap: 4px;
-      transition: color 0.15s, border-color 0.15s, background 0.15s;
-    }
-
-    .copy-chip:hover { color: var(--text); border-color: var(--border-strong); }
-    .copy-chip.active {
-      background: rgba(232, 46, 63, 0.2);
-      border-color: rgba(232, 46, 63, 0.5);
-      color: #fff;
-    }
-
-    /* Route Timeline */
-    .route-list {
-      display: flex;
-      flex-direction: column;
-      gap: 14px;
-    }
-
-    .route-item {
-      display: grid;
-      grid-template-columns: 18px 1fr;
-      gap: 12px;
-      align-items: start;
-    }
-
-    .node-col {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      padding-top: 4px;
-    }
-
-    .node-dot {
-      width: 11px;
-      height: 11px;
-      border-radius: 50%;
-    }
-
-    .node-dot.pickup { background: var(--green); box-shadow: 0 0 10px rgba(16, 185, 129, 0.6); }
-    .node-dot.current { background: var(--cyan); box-shadow: 0 0 10px rgba(14, 165, 233, 0.7); }
-    .node-dot.dropoff { background: var(--accent); box-shadow: 0 0 10px var(--accent-glow); }
-
-    .route-title { font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-dim); }
-    .route-addr { font-size: 14px; font-weight: 600; margin-top: 2px; word-break: break-word; }
-    .route-coords {
-      font-size: 11.5px;
-      font-family: var(--mono);
-      color: var(--text-dim);
-      margin-top: 4px;
       display: flex;
       align-items: center;
       gap: 8px;
       flex-wrap: wrap;
     }
 
-    /* Key-Value Grid */
-    .kv-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-      gap: 8px 18px;
+    .action-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin-top: 6px;
     }
 
-    .kv-item {
+    .call-link {
+      background: rgba(16, 185, 129, 0.14);
+      border: 1px solid rgba(16, 185, 129, 0.38);
+      color: var(--green);
+      border-radius: 7px;
+      padding: 4px 10px;
+      font-family: var(--mono);
+      font-size: 12px;
+      font-weight: 700;
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .call-link:hover {
+      background: rgba(16, 185, 129, 0.24);
+    }
+
+    .vehicle-strip {
+      margin-top: 12px;
+      padding-top: 12px;
+      border-top: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .plate-box {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: var(--bg);
+      border: 1px solid var(--border-hi);
+      border-radius: 8px;
+      padding: 5px 10px;
+      font-family: var(--mono);
+      font-size: 13px;
+      font-weight: 700;
+      letter-spacing: 0.03em;
+    }
+
+    .vehicle-meta {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 12.5px;
+      color: var(--muted);
+      font-weight: 600;
+    }
+
+    .vehicle-meta img {
+      width: 26px;
+      height: 20px;
+      object-fit: contain;
+    }
+
+    /* Route Waypoints */
+    .waypoint-list {
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+
+    .wp-item {
+      display: grid;
+      grid-template-columns: 20px 1fr;
+      gap: 10px;
+      align-items: start;
+    }
+
+    .wp-marker {
+      display: flex;
+      justify-content: center;
+      padding-top: 3px;
+    }
+
+    .wp-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+    }
+
+    .wp-dot.pickup { background: var(--green); }
+    .wp-dot.live { background: var(--sky); }
+
+    .wp-label {
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--muted);
+    }
+
+    .wp-addr {
+      font-size: 13.5px;
+      font-weight: 600;
+      margin-top: 2px;
+      word-break: break-word;
+    }
+
+    .wp-sub {
+      font-size: 11.5px;
+      font-family: var(--mono);
+      color: var(--muted);
+      margin-top: 3px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    /* Bottom Telemetry Table */
+    .meta-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 6px 20px;
+    }
+
+    .meta-row {
       display: flex;
       justify-content: space-between;
       align-items: baseline;
-      padding: 8px 0;
+      padding: 7px 0;
       border-bottom: 1px solid rgba(255, 255, 255, 0.05);
       gap: 10px;
     }
 
-    .kv-k { font-size: 12px; color: var(--text-dim); }
-    .kv-v { font-size: 12.5px; font-family: var(--mono); font-weight: 600; text-align: right; }
+    .meta-k { font-size: 12px; color: var(--muted); }
+    .meta-v { font-size: 12px; font-family: var(--mono); font-weight: 600; text-align: right; }
 
-    /* Raw JSON Drawer */
-    details.json-box {
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: 18px;
-      overflow: hidden;
-    }
-
-    details.json-box summary {
-      padding: 13px 18px;
-      cursor: pointer;
-      font-size: 12px;
-      font-weight: 700;
-      text-transform: uppercase;
-      letter-spacing: 0.07em;
-      color: var(--text-dim);
-      user-select: none;
-      list-style: none;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-    }
-
-    details.json-box summary::-webkit-details-marker { display: none; }
-
-    .json-grid {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 12px;
-      padding: 0 18px 18px;
-    }
-
-    @media (max-width: 820px) {
-      .json-grid { grid-template-columns: 1fr; }
-    }
-
-    pre.code-pane {
-      background: #06080c;
-      border: 1px solid var(--border);
-      border-radius: 12px;
-      padding: 12px;
-      font-family: var(--mono);
-      font-size: 11.5px;
-      color: #cbd5e1;
-      overflow: auto;
-      max-height: 300px;
-    }
-
-    /* Manual Modal */
-    .modal-backdrop {
+    /* Modal */
+    .modal-bg {
       position: fixed;
       inset: 0;
       background: rgba(0, 0, 0, 0.72);
-      backdrop-filter: blur(8px);
       display: none;
       align-items: center;
       justify-content: center;
@@ -569,26 +652,26 @@
       z-index: 1000;
     }
 
-    .modal-backdrop.open { display: flex; }
+    .modal-bg.open { display: flex; }
 
-    .modal-card {
-      background: #10141d;
-      border: 1px solid var(--border-strong);
-      border-radius: 22px;
+    .modal-box {
+      background: var(--panel);
+      border: 1px solid var(--border-hi);
+      border-radius: 14px;
       width: 100%;
-      max-width: 680px;
-      padding: 20px;
+      max-width: 620px;
+      padding: 18px;
       display: flex;
       flex-direction: column;
       gap: 12px;
     }
 
-    .modal-card textarea {
+    .modal-box textarea {
       width: 100%;
-      height: 120px;
-      background: #07090e;
+      height: 115px;
+      background: var(--bg);
       border: 1px solid var(--border);
-      border-radius: 12px;
+      border-radius: 9px;
       padding: 10px;
       color: var(--text);
       font-family: var(--mono);
@@ -599,220 +682,259 @@
 
     footer {
       text-align: center;
-      padding: 18px 16px;
-      font-size: 12px;
-      color: var(--text-dim);
-      border-top: 1px solid rgba(255, 255, 255, 0.05);
+      padding: 14px 16px;
+      font-size: 11.5px;
+      color: #5c6b7d;
+      border-top: 1px solid var(--border);
+      margin-top: auto;
     }
   </style>
 </head>
 <body>
-  <div class="container">
-    <form class="search-shell" id="lookupForm" autocomplete="off">
-      <span class="brand-dot"></span>
-      <input
-        id="urlInput"
-        class="search-input"
-        type="text"
-        placeholder="https://pages.pathao.com/share-ride/u----pxXG____UtgQgt7i5O3CYjw=="
-        spellcheck="false"
-        required
-      />
-      <button type="submit" class="btn btn-primary" id="fetchBtn">Track Live</button>
-    </form>
-
-    <div class="toolbar">
-      <div class="status-line" id="statusLine">Ready • Kathmandu, Nepal</div>
-      <div class="toolbar-group">
-        <button type="button" class="btn btn-ghost" id="liveToggleBtn" style="display:none;">1s Live Sync: ON</button>
-        <button type="button" class="btn btn-ghost" id="openManualBtn">Paste JSON</button>
-        <button type="button" class="btn btn-ghost" id="loadSampleBtn">Sample</button>
+  <header class="topbar">
+    <div class="topbar-inner">
+      <div class="brand">
+        <img src="https://pages.pathao.com/favicon.ico" alt="" />
+        <span>Pathao Ride Telemetry</span>
       </div>
+
+      <form class="url-form" id="lookupForm" autocomplete="off">
+        <input
+          id="urlInput"
+          class="url-input"
+          type="text"
+          placeholder="https://pages.pathao.com/share-ride/u----pxXG____UtgQgt7i5O3CYjw=="
+          spellcheck="false"
+          required
+        />
+        <button type="submit" class="btn btn-primary" id="fetchBtn">Track</button>
+      </form>
+
+      <div class="sync-status" id="statusLine">Kathmandu, Nepal</div>
+
+      <button type="button" class="btn btn-subtle live-on" id="liveToggleBtn" style="display:none;">
+        <span class="dot-pulse"></span><span>1s Live</span>
+      </button>
+      <button type="button" class="btn btn-subtle" id="openManualBtn">JSON Input</button>
     </div>
+  </header>
 
-    <main class="dashboard" id="dashboard">
-      <!-- Top Telemetry -->
-      <section class="telemetry-bar">
-        <div class="stat-box">
-          <div class="stat-label">Ride Status</div>
-          <div class="stat-val">
-            <span class="pill pill-live" id="vStatusPill"><span class="pulse-dot"></span><span id="vStatusText">—</span></span>
-            <span class="pill pill-neutral" id="vOnlinePill">—</span>
-          </div>
-          <div class="stat-sub" id="vRideMsg">—</div>
+  <main class="workspace" id="dashboard">
+    <!-- Top Telemetry Metrics -->
+    <section class="kpi-grid">
+      <div class="kpi-card">
+        <div class="kpi-label">Ride Status</div>
+        <div class="kpi-value">
+          <span class="badge badge-green" id="vStatusBadge">—</span>
+          <span class="badge badge-muted" id="vOnlineBadge">—</span>
         </div>
-
-        <div class="stat-box">
-          <div class="stat-label">Remaining Distance</div>
-          <div class="stat-val" id="vDistKm">—</div>
-          <div class="stat-sub" id="vDistMeters">—</div>
-        </div>
-
-        <div class="stat-box">
-          <div class="stat-label">Remaining ETA</div>
-          <div class="stat-val" id="vEtaDur">—</div>
-          <div class="stat-sub" id="vEtaClock">—</div>
-        </div>
-
-        <div class="stat-box">
-          <div class="stat-label">Est. Total Duration</div>
-          <div class="stat-val" id="vTotalDur">—</div>
-          <div class="stat-sub" id="vRideType">—</div>
-        </div>
-      </section>
-
-      <!-- Map + Entities/Route -->
-      <section class="split-grid">
-        <div class="glass-card map-card">
-          <div class="map-header">
-            <div class="toolbar-group">
-              <button type="button" class="copy-chip active" id="layerStreetBtn">Kathmandu Map</button>
-              <button type="button" class="copy-chip" id="layerDarkBtn">Dark Map</button>
-            </div>
-            <div class="toolbar-group">
-              <button type="button" class="copy-chip active" id="followLiveBtn">Follow Live: ON</button>
-              <button type="button" class="copy-chip" id="fitBoundsBtn">Fit Route</button>
-              <button type="button" class="copy-chip" id="focusKtmBtn">KTM</button>
-              <button type="button" class="copy-chip" id="focusNepalBtn">Nepal</button>
-              <a class="copy-chip" id="extMapsBtn" target="_blank" rel="noopener">Google Maps ↗</a>
-            </div>
-          </div>
-          <div id="map"></div>
-        </div>
-
-        <div class="stack">
-          <!-- Driver Card -->
-          <div class="glass-card">
-            <div class="section-title">
-              <span>Driver &amp; Vehicle</span>
-              <span class="pill pill-neutral" id="vDriverId">ID #—</span>
-            </div>
-            <div class="person-row">
-              <div class="avatar" id="vDriverAvatar"><span id="vDriverInit">?</span></div>
-              <div class="person-meta">
-                <div class="person-name">
-                  <span id="vDriverName">—</span>
-                  <span class="pill pill-warn" id="vDriverRating" style="display:none;">★ —</span>
-                </div>
-                <div class="person-sub" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:6px;">
-                  <span id="vDriverPhoneText">—</span>
-                  <a class="call-btn" id="vDriverCallBtn" href="#" style="display:none;">Call +977</a>
-                  <button type="button" class="copy-chip" id="vDriverCopyBtn" style="display:none;">Copy</button>
-                </div>
-              </div>
-            </div>
-            <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;">
-              <div class="plate-badge">
-                <span id="vPlateText">NO PLATE</span>
-                <button type="button" class="copy-chip" id="vPlateCopyBtn" style="display:none;">Copy</button>
-              </div>
-              <div class="person-sub" id="vVehicleSpec">—</div>
-            </div>
-          </div>
-
-          <!-- Rider Card -->
-          <div class="glass-card">
-            <div class="section-title">
-              <span>Passenger</span>
-              <a class="call-btn" id="vEmergencyBtn" href="tel:100" style="background:rgba(232,46,63,0.16);border-color:rgba(232,46,63,0.4);color:#ff6b78;">Emergency: 100</a>
-            </div>
-            <div class="person-row">
-              <div class="avatar" id="vRiderAvatar"><span id="vRiderInit">?</span></div>
-              <div class="person-meta">
-                <div class="person-name">
-                  <span id="vRiderName">—</span>
-                  <span class="pill pill-live" id="vRiderRating" style="display:none;">★ —</span>
-                </div>
-                <div class="person-sub" id="vDropoffFlag">Dropoff Set: —</div>
-              </div>
-            </div>
-          </div>
-
-          <!-- Waypoints Card -->
-          <div class="glass-card">
-            <div class="section-title"><span>Waypoints</span></div>
-            <div class="route-list">
-              <div class="route-item">
-                <div class="node-col"><span class="node-dot pickup"></span></div>
-                <div>
-                  <div class="route-title" id="vPickupTitle">Pickup</div>
-                  <div class="route-addr" id="vPickupAddr">—</div>
-                  <div class="route-coords">
-                    <span id="vPickupCoords">—</span>
-                    <a class="copy-chip" id="vPickupMapLink" target="_blank" rel="noopener" style="display:none;">Map ↗</a>
-                  </div>
-                </div>
-              </div>
-
-              <div id="vStoppagesWrap" style="display:contents;"></div>
-
-              <div class="route-item">
-                <div class="node-col"><span class="node-dot current"></span></div>
-                <div>
-                  <div class="route-title">Live Position (1s Stream)</div>
-                  <div class="route-coords" style="margin-top:2px;">
-                    <span id="vLiveCoords">—</span>
-                    <a class="copy-chip" id="vLiveMapLink" target="_blank" rel="noopener" style="display:none;">Map ↗</a>
-                  </div>
-                </div>
-              </div>
-
-              <div class="route-item">
-                <div class="node-col"><span class="node-dot dropoff"></span></div>
-                <div>
-                  <div class="route-title" id="vDropTitle">Destination</div>
-                  <div class="route-addr" id="vDropAddr">—</div>
-                  <div class="route-coords">
-                    <span id="vDropCoords">—</span>
-                    <a class="copy-chip" id="vDropMapLink" target="_blank" rel="noopener" style="display:none;">Map ↗</a>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      <!-- Session Timestamps -->
-      <section class="glass-card">
-        <div class="section-title">
-          <span>Session &amp; Timestamp Breakdown (NPT)</span>
-          <span id="rideIdBadge" class="copy-chip" title="Copy Ride ID"></span>
-        </div>
-        <div class="kv-grid" id="metaGrid"></div>
-      </section>
-
-      <!-- Raw API Payloads -->
-      <details class="json-box" id="rawJsonDetails">
-        <summary>
-          <span>Raw Endpoint Responses (/api/ride &amp; /api/ride/path)</span>
-          <span style="font-family:var(--mono);font-size:11px;">JSON</span>
-        </summary>
-        <div class="json-grid">
-          <div>
-            <div class="stat-label" style="margin-bottom:6px;">GET /api/ride</div>
-            <pre class="code-pane" id="rawRideJson"></pre>
-          </div>
-          <div>
-            <div class="stat-label" style="margin-bottom:6px;">GET /api/ride/path</div>
-            <pre class="code-pane" id="rawPathJson"></pre>
-          </div>
-        </div>
-      </details>
-    </main>
-  </div>
-
-  <!-- Manual JSON Modal -->
-  <div class="modal-backdrop" id="manualModal">
-    <div class="modal-card">
-      <div class="section-title" style="margin:0;">
-        <span>Direct Payload Parser</span>
-        <button type="button" class="copy-chip" id="closeManualBtn">ESC</button>
+        <div class="kpi-sub" id="vRideMsg">—</div>
       </div>
-      <textarea id="manualRideInput" placeholder="Paste /api/ride JSON response here..."></textarea>
-      <textarea id="manualPathInput" placeholder="Paste /api/ride/path JSON response here (optional)..."></textarea>
-      <div style="display:flex;justify-content:flex-end;gap:8px;">
-        <button type="button" class="btn btn-primary" id="parseManualBtn">Render Payload</button>
+
+      <div class="kpi-card">
+        <div class="kpi-label">Remaining Distance</div>
+        <div class="kpi-value" id="vDistKm">—</div>
+        <div class="kpi-sub" id="vDistMeters">—</div>
+      </div>
+
+      <div class="kpi-card">
+        <div class="kpi-label">Remaining ETA</div>
+        <div class="kpi-value" id="vEtaDur">—</div>
+        <div class="kpi-sub" id="vEtaClock">—</div>
+      </div>
+
+      <div class="kpi-card">
+        <div class="kpi-label">Est. Total Duration</div>
+        <div class="kpi-value" id="vTotalDur">—</div>
+        <div class="kpi-sub" id="vPickupWait">—</div>
+      </div>
+
+      <div class="kpi-card">
+        <div class="kpi-label">Service &amp; Heading</div>
+        <div class="kpi-value">
+          <img
+            src="https://pages.pathao.com/_next/static/media/bike.1-yit1h3vi0-y.svg"
+            alt=""
+            style="width:26px;height:20px;object-fit:contain;"
+            onerror="this.style.display='none'"
+          />
+          <span id="vRideType">—</span>
+        </div>
+        <div class="kpi-sub" id="vHeadingSpeed">—</div>
+      </div>
+    </section>
+
+    <!-- Map + Details Split -->
+    <section class="main-grid">
+      <div class="map-shell">
+        <div class="map-toolbar">
+          <div class="chip-group">
+            <button type="button" class="chip active" id="layerStreetBtn">Kathmandu Streets</button>
+            <button type="button" class="chip" id="layerDarkBtn">Dark Map</button>
+          </div>
+          <div class="chip-group">
+            <button type="button" class="chip active" id="followLiveBtn">Follow Bike</button>
+            <button type="button" class="chip" id="fitBoundsBtn">Fit Route</button>
+            <button type="button" class="chip" id="focusKtmBtn">KTM</button>
+            <button type="button" class="chip" id="focusNepalBtn">Nepal</button>
+            <a class="chip" id="extMapsBtn" target="_blank" rel="noopener">Google Maps ↗</a>
+          </div>
+        </div>
+
+        <div id="map"></div>
+
+        <!-- Live Ride HUD Overlay -->
+        <div class="map-hud">
+          <div class="map-hud-icon">
+            <img
+              src="https://pages.pathao.com/_next/static/media/bike.1-yit1h3vi0-y.svg"
+              alt=""
+              onerror="this.style.display='none'"
+            />
+          </div>
+          <div class="map-hud-body">
+            <div class="map-hud-top">
+              <span id="hudStatusText">Towards Destination</span>
+              <span id="hudEtaText" style="font-family:var(--mono);color:var(--text);">—</span>
+            </div>
+            <div class="map-hud-dest" id="hudDestText">—</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="side-col">
+        <!-- Driver & Vehicle -->
+        <div class="card">
+          <div class="card-head">
+            <span class="card-title">Driver &amp; Vehicle</span>
+            <span class="badge badge-muted" id="vDriverId">ID #—</span>
+          </div>
+
+          <div class="profile-row">
+            <div class="avatar" id="vDriverAvatar"><span id="vDriverInit">?</span></div>
+            <div class="profile-info">
+              <div class="profile-name">
+                <span id="vDriverName">—</span>
+                <span class="badge badge-amber" id="vDriverRating" style="display:none;">★ —</span>
+              </div>
+              <div class="action-row">
+                <a class="call-link" id="vDriverCallBtn" href="#" style="display:none;">+977 —</a>
+                <button type="button" class="chip" id="vDriverCopyBtn" style="display:none;">Copy</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="vehicle-strip">
+            <div class="plate-box">
+              <span id="vPlateText">—</span>
+              <button type="button" class="chip" id="vPlateCopyBtn" style="display:none;">Copy</button>
+            </div>
+            <div class="vehicle-meta">
+              <img
+                src="https://pages.pathao.com/_next/static/media/bike.1-yit1h3vi0-y.svg"
+                alt=""
+                onerror="this.style.display='none'"
+              />
+              <span id="vVehicleSpec">—</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Passenger & Emergency -->
+        <div class="card">
+          <div class="card-head">
+            <span class="card-title">Passenger</span>
+            <a class="call-link" id="vEmergencyBtn" href="tel:100" style="background:rgba(232,46,63,0.14);border-color:rgba(232,46,63,0.38);color:#ff6b78;">Emergency 100</a>
+          </div>
+
+          <div class="profile-row">
+            <div class="avatar" id="vRiderAvatar"><span id="vRiderInit">?</span></div>
+            <div class="profile-info">
+              <div class="profile-name">
+                <span id="vRiderName">—</span>
+                <span class="badge badge-green" id="vRiderRating" style="display:none;">★ —</span>
+              </div>
+              <div class="wp-sub" id="vDropoffFlag">Dropoff Set: —</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Route Waypoints -->
+        <div class="card">
+          <div class="card-head">
+            <span class="card-title">Route &amp; Waypoints</span>
+          </div>
+
+          <div class="waypoint-list">
+            <div class="wp-item">
+              <div class="wp-marker"><span class="wp-dot pickup"></span></div>
+              <div>
+                <div class="wp-label" id="vPickupTitle">Pickup</div>
+                <div class="wp-addr" id="vPickupAddr">—</div>
+                <div class="wp-sub">
+                  <span id="vPickupCoords">—</span>
+                  <a class="chip" id="vPickupMapLink" target="_blank" rel="noopener" style="display:none;">Map ↗</a>
+                </div>
+              </div>
+            </div>
+
+            <div id="vStoppagesWrap" style="display:contents;"></div>
+
+            <div class="wp-item">
+              <div class="wp-marker"><span class="wp-dot live"></span></div>
+              <div>
+                <div class="wp-label">Live GPS Position</div>
+                <div class="wp-sub" style="margin-top:2px;">
+                  <span id="vLiveCoords">—</span>
+                  <a class="chip" id="vLiveMapLink" target="_blank" rel="noopener" style="display:none;">Map ↗</a>
+                </div>
+              </div>
+            </div>
+
+            <div class="wp-item">
+              <div class="wp-marker">
+                <img
+                  src="https://pages.pathao.com/_next/static/media/ic_dropoff.0bdg7c1u_cl-r.svg"
+                  alt=""
+                  style="width:16px;height:20px;object-fit:contain;"
+                  onerror="this.outerHTML='<span class=\'wp-dot\' style=\'background:var(--pathao);\'></span>'"
+                />
+              </div>
+              <div>
+                <div class="wp-label" id="vDropTitle">Destination</div>
+                <div class="wp-addr" id="vDropAddr">—</div>
+                <div class="wp-sub">
+                  <span id="vDropCoords">—</span>
+                  <a class="chip" id="vDropMapLink" target="_blank" rel="noopener" style="display:none;">Map ↗</a>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Exact Timestamps & Telemetry Fields -->
+    <section class="card">
+      <div class="card-head">
+        <span class="card-title">Session Timestamps &amp; Coordinates</span>
+        <button type="button" class="chip" id="rideIdBadge" title="Copy Ride ID">—</button>
+      </div>
+      <div class="meta-grid" id="metaGrid"></div>
+    </section>
+  </main>
+
+  <!-- Direct JSON Modal -->
+  <div class="modal-bg" id="manualModal">
+    <div class="modal-box">
+      <div class="card-head" style="margin-bottom:0;">
+        <span class="card-title">Direct Payload Input</span>
+        <button type="button" class="chip" id="closeManualBtn">ESC</button>
+      </div>
+      <textarea id="manualRideInput" placeholder="/api/ride JSON"></textarea>
+      <textarea id="manualPathInput" placeholder="/api/ride/path JSON (optional)"></textarea>
+      <div style="display:flex;justify-content:flex-end;">
+        <button type="button" class="btn btn-primary" id="parseManualBtn">Load</button>
       </div>
     </div>
   </div>
@@ -820,95 +942,30 @@
   <footer>© 2026 Sanchar Koirala | All rights reserved</footer>
 
   <script>
-    // Kathmandu Valley & Nepal Geographic Constants
     const KATHMANDU_CENTER = [27.6915, 85.3240];
     const NEPAL_BOUNDS = [
       [26.347, 80.058],
       [30.447, 88.201]
     ];
 
-    const SAMPLE_ID = "u----pxXG____UtgQgt7i5O3CYjw==";
-    const SAMPLE_RIDE = {
-      created_at: 1795076186,
-      started_at: 1795076414,
-      current_latitude: 27.677845,
-      current_longitude: 85.310939,
-      estimated_pickup_latitude: 27.67586626,
-      estimated_pickup_longitude: 85.31464487,
-      estimated_dropoff_latitude: 27.69995411,
-      estimated_dropoff_longitude: 85.36877453,
-      pickup_latitude: 27.6758595,
-      pickup_longitude: 85.3145817,
-      pickup_address: "टीथ वेअवेर्स डेन्तल क्लिनिक, उग्रचन्दी मार्ग",
-      dropoff_address: "Khadka Kul Deuta Mandir, Thapagaon, Kathmandu",
-      estimated_ride_duration: 1616,
-      stoppages: null,
-      status: "STARTED",
-      driver: {
-        id: 14843378,
-        name: "Tul Narayan Shrestha",
-        profile_pic: "/b59d83e13171e64fed389d8efe4fff0f/d/enlist/b77b0abb0876deb1c8188e2aa401df062128a5b8.png",
-        rating: "4.65",
-        number: "9845876315",
-        vehicle: {
-          model: "Pulsar 150",
-          color: "black",
-          reg_number: "Ba Pr 02-062 Pa 4197"
-        }
-      },
-      rider: {
-        name: "Romisha shrestha",
-        profile_pic: "/79b2de543c05301f06bbec2f50801581/d/uploads/img/profile/9929985B4DYIs1784075700.png",
-        rating: "5.00"
-      },
-      emergency_number: "100",
-      time_offset: 20700,
-      ride_type: "bike",
-      ride_message: "Towards Destination",
-      is_offline: false,
-      has_dropoff: true
-    };
-
-    const SAMPLE_PATH = {
-      towards_destination: {
-        polyline: "ip|gDcrvgO`AgBt@mAv@mA`BgCV_@\\e@FMPYTo@\\kANk@V_AVgAD]PiAPaB@]?IJgABQZyAHYJCNKRSPUVc@n@iA\\_@LKPKTOZYJMHIz@_ANOr@w@j@o@f@k@f@i@HI\\_@FKRUPWp@y@LO^e@f@o@T_@r@aAFIZc@Xe@\\m@FQRa@f@aABEDIZm@DE\\c@^QR]\\]FKFKRSx@aARKXKR[R_@P]DITc@BGHMQM[YQQi@k@_@a@OWS[QYQ]Yo@c@cAy@kBqAyCmAqC{BiF}BkFgAgCa@{@e@aAe@w@a@k@W_@c@i@a@a@c@e@{BuBcDaD]_@_A{@w@s@a@c@k@k@i@m@i@m@g@q@i@w@[i@Ua@i@}@{@{Ac@w@mBiDq@iAiAmBi@}@iAsBq@kAe@w@OSMICw@RQj@O\\?bC@\\A^C\\E^G^I^M^Q\\S^WFIPQFGNOJQZa@DIFIDKDKFKDMDMDMDMDMBODMLy@D]Bi@BwA?K@W[AU@SAmD?YAg@Ao@Oi@Me@Me@Oq@Yw@YaAc@_@OwAm@cA_@_A_@u@_@}As@yAo@uAm@mBu@gAa@qAi@IEuB}@yB}@m@YwAq@i@OOGa@[_@Wq@_@u@k@{@s@oAcA{AoAiBuAWY_@Y}AkA_A}@gA{@g@a@IJ[Uu@o@UMcBeAo@_@q@YYKYAS@QDUFWNc@?W?o@CmBCSGMMKMQYOMOKUGiG{AkBe@OGKIGICCEICMIWe@qBk@gCo@mCm@cCKe@EMKMg@y@i@m@GQCKCODi@JoBi@?_@DKAY[QQq@c@_@I_@IYGYAYEWw@]g@c@c@g@?g@@SFIFQHKBKCICK@S?C?MBKD]@Ca@Cq@F?",
-        distance: 8061.4,
-        duration: 1120
-      },
-      current_address: {
-        lat: 27.6764045,
-        long: 85.3176432
-      },
-      pickup_address: {
-        lat: 27.6758595,
-        long: 85.3145817,
-        street: "टीथ वेअवेर्स डेन्तल क्लिनिक, उग्रचन्दी मार्ग",
-        arrival_time: 1795076414,
-        has_reached: true
-      },
-      destination_address: {
-        lat: 27.69995411,
-        long: 85.36877453,
-        street: "Khadka Kul Deuta Mandir, Thapagaon, Kathmandu",
-        arrival_time: 1795077656
-      },
-      ride_status: "STARTED",
-      ride_message: "Towards Destination",
-      server_time: 1795076536,
-      driver_id: 14843378,
-      is_offline: false,
-      has_dropoff: true
+    const ASSETS = {
+      bikeSide: "https://pages.pathao.com/_next/static/media/bike.1-yit1h3vi0-y.svg",
+      bikeTop: "https://pages.pathao.com/_next/static/media/bike-white.3a99f9yreynrd.svg",
+      dropoffPin: "https://pages.pathao.com/_next/static/media/ic_dropoff.0bdg7c1u_cl-r.svg"
     };
 
     const $ = (id) => document.getElementById(id);
 
-    // Map & Animation State
+    // Map & Layer State
     let mapInstance = null;
     let streetTileLayer = null;
     let darkTileLayer = null;
+    let routeCasing = null;
     let routePolyline = null;
+    let decodedRouteCoords = [];
     let pickupMarker = null;
     let currentMarker = null;
+    let currentMarkerImgEl = null;
     let dropoffMarker = null;
     let lastBounds = null;
     let lastPolylineEncoded = null;
@@ -918,11 +975,13 @@
     let initialFitDone = false;
     let followLive = true;
 
-    // Smooth Marker Glide State
+    // Smooth 60fps Marker Animation State
     let markerAnimRaf = null;
     let currentAnimatedLatLng = null;
+    let currentHeadingDeg = 0;
+    let lastGpsFix = null;
 
-    // 1-Second Real-Time Polling State
+    // 1-Second Polling State
     let currentRideId = null;
     let liveSyncEnabled = true;
     let pollTimeoutId = null;
@@ -1052,6 +1111,17 @@
       return points;
     }
 
+    function haversineMeters(lat1, lon1, lat2, lon2) {
+      const R = 6371000;
+      const toRad = (d) => (d * Math.PI) / 180;
+      const dLat = toRad(lat2 - lat1);
+      const dLon = toRad(lon2 - lon1);
+      const a =
+        Math.sin(dLat / 2) ** 2 +
+        Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLon / 2) ** 2;
+      return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    }
+
     function computeBearing(lat1, lon1, lat2, lon2) {
       const toRad = (d) => (d * Math.PI) / 180;
       const toDeg = (r) => (r * 180) / Math.PI;
@@ -1061,6 +1131,27 @@
         Math.cos(toRad(lat1)) * Math.sin(toRad(lat2)) -
         Math.sin(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.cos(dLon);
       return (toDeg(Math.atan2(y, x)) + 360) % 360;
+    }
+
+    function lerpAngle(a, b, t) {
+      const diff = ((b - a + 540) % 360) - 180;
+      return (a + diff * t + 360) % 360;
+    }
+
+    function initialRouteHeading(lat, lng, coords) {
+      if (!coords || coords.length < 2) return 0;
+      let bestIdx = 0;
+      let bestDist = Infinity;
+      for (let i = 0; i < coords.length - 1; i++) {
+        const d = Math.hypot(coords[i][0] - lat, coords[i][1] - lng);
+        if (d < bestDist) {
+          bestDist = d;
+          bestIdx = i;
+        }
+      }
+      const p1 = coords[bestIdx];
+      const p2 = coords[Math.min(bestIdx + 1, coords.length - 1)];
+      return computeBearing(p1[0], p1[1], p2[0], p2[1]);
     }
 
     function initials(name) {
@@ -1087,7 +1178,7 @@
       ];
     }
 
-    async function fetchWithTimeout(url, timeoutMs = 2400) {
+    async function fetchWithTimeout(url, timeoutMs = 2200) {
       const ctrl = new AbortController();
       const timer = setTimeout(() => ctrl.abort(), timeoutMs);
       try {
@@ -1100,7 +1191,7 @@
         const text = await res.text();
         const data = JSON.parse(text);
         if (!data || typeof data !== "object" || data.error) {
-          throw new Error(data?.error || "Empty payload");
+          throw new Error(data?.error || "Invalid response");
         }
         return data;
       } finally {
@@ -1113,7 +1204,7 @@
 
       if (preferredTransportIdx !== null && transports[preferredTransportIdx]) {
         try {
-          return await fetchWithTimeout(transports[preferredTransportIdx], 2200);
+          return await fetchWithTimeout(transports[preferredTransportIdx], 2000);
         } catch (_) {
           preferredTransportIdx = null;
         }
@@ -1122,20 +1213,20 @@
       let lastErr = null;
       for (let i = 0; i < transports.length; i++) {
         try {
-          const data = await fetchWithTimeout(transports[i], 2600);
+          const data = await fetchWithTimeout(transports[i], 2400);
           preferredTransportIdx = i;
           return data;
         } catch (err) {
           lastErr = err;
         }
       }
-      throw lastErr || new Error("Request failed");
+      throw lastErr || new Error("Connection failed");
     }
 
     function setStatus(msg, type = "") {
       const el = $("statusLine");
       el.textContent = msg;
-      el.className = `status-line ${type}`.trim();
+      el.className = `sync-status ${type}`.trim();
     }
 
     function copyText(text, btnEl) {
@@ -1153,16 +1244,15 @@
 
       mapInstance = L.map("map", {
         center: KATHMANDU_CENTER,
-        zoom: 13,
+        zoom: 14,
         maxBounds: NEPAL_BOUNDS,
-        maxBoundsViscosity: 0.7,
+        maxBoundsViscosity: 0.75,
         zoomControl: true,
         preferCanvas: true
       });
 
-      // Default: Kathmandu & Nepal detailed street map (OpenStreetMap)
       streetTileLayer = L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
-        attribution: "&copy; OpenStreetMap contributors • Kathmandu, Nepal",
+        attribution: "&copy; OpenStreetMap • Kathmandu, Nepal",
         maxZoom: 19,
         keepBuffer: 4
       }).addTo(mapInstance);
@@ -1174,35 +1264,58 @@
         keepBuffer: 4
       });
 
+      routeCasing = L.polyline([], {
+        color: "#182229",
+        weight: 8,
+        opacity: 0.55,
+        lineCap: "round",
+        lineJoin: "round"
+      }).addTo(mapInstance);
+
       routePolyline = L.polyline([], {
         color: "#e82e3f",
         weight: 5,
-        opacity: 0.92,
-        smoothFactor: 1.0
+        opacity: 0.96,
+        lineCap: "round",
+        lineJoin: "round"
       }).addTo(mapInstance);
     }
 
-    function staticPinIcon(color, label) {
+    function pickupPinIcon() {
       return L.divIcon({
         className: "",
-        html: `<div style="width:15px;height:15px;border-radius:50%;background:${color};border:2.5px solid #fff;box-shadow:0 2px 8px rgba(0,0,0,0.45);" title="${esc(label)}"></div>`,
-        iconSize: [15, 15],
-        iconAnchor: [7.5, 7.5]
+        html: `<div style="width:16px;height:16px;border-radius:50%;background:#10b981;border:3px solid #ffffff;box-shadow:0 2px 8px rgba(0,0,0,0.45);"></div>`,
+        iconSize: [16, 16],
+        iconAnchor: [8, 8]
       });
     }
 
-    function liveBeaconIcon(headingDeg = 0) {
+    function dropoffPinIcon() {
+      return L.divIcon({
+        className: "",
+        html: `<img src="${ASSETS.dropoffPin}" alt="" style="width:34px;height:42px;display:block;filter:drop-shadow(0 3px 6px rgba(0,0,0,0.45));" />`,
+        iconSize: [34, 42],
+        iconAnchor: [17, 41],
+        popupAnchor: [0, -36]
+      });
+    }
+
+    function bikeMarkerIcon(headingDeg = 0) {
       return L.divIcon({
         className: "",
         html: `
-          <div class="live-beacon">
-            <div class="live-beacon-ring"></div>
-            <div class="live-beacon-core" style="transform: rotate(${headingDeg}deg);">
-              <div class="live-beacon-arrow"></div>
-            </div>
+          <div class="bike-marker-wrap">
+            <div class="bike-marker-halo"></div>
+            <img
+              class="bike-marker-img"
+              src="${ASSETS.bikeTop}"
+              alt=""
+              style="transform: rotate(${headingDeg}deg);"
+            />
           </div>`,
-        iconSize: [26, 26],
-        iconAnchor: [13, 13]
+        iconSize: [38, 38],
+        iconAnchor: [19, 19],
+        popupAnchor: [0, -18]
       });
     }
 
@@ -1210,14 +1323,22 @@
       const nextPos = [Number(targetLat), Number(targetLng)];
       if (isNaN(nextPos[0]) || isNaN(nextPos[1])) return;
 
+      const nowMs = performance.now();
+
       if (!currentMarker) {
         currentAnimatedLatLng = nextPos;
+        currentHeadingDeg = initialRouteHeading(nextPos[0], nextPos[1], decodedRouteCoords);
+        lastGpsFix = { lat: nextPos[0], lng: nextPos[1], time: nowMs };
+
         currentMarker = L.marker(nextPos, {
-          icon: liveBeaconIcon(0),
+          icon: bikeMarkerIcon(currentHeadingDeg),
           zIndexOffset: 1000
         })
-          .bindPopup(`<b>Live Position</b><br>${nextPos[0].toFixed(6)}, ${nextPos[1].toFixed(6)}`)
+          .bindPopup(`<b>Live Rider</b><br>${nextPos[0].toFixed(6)}, ${nextPos[1].toFixed(6)}`)
           .addTo(mapInstance);
+
+        const el = currentMarker.getElement();
+        if (el) currentMarkerImgEl = el.querySelector(".bike-marker-img");
         return;
       }
 
@@ -1226,24 +1347,46 @@
         currentMarker.getLatLng().lng
       ];
 
-      const movedDist = Math.hypot(nextPos[0] - startPos[0], nextPos[1] - startPos[1]);
-      if (movedDist < 0.000002) return;
+      const distMeters = haversineMeters(startPos[0], startPos[1], nextPos[0], nextPos[1]);
 
-      const bearing = computeBearing(startPos[0], startPos[1], nextPos[0], nextPos[1]);
-      currentMarker.setIcon(liveBeaconIcon(bearing));
-      currentMarker.setPopupContent(`<b>Live Position</b><br>${nextPos[0].toFixed(6)}, ${nextPos[1].toFixed(6)}`);
+      if (lastGpsFix) {
+        const dtSec = Math.max(0.2, (nowMs - lastGpsFix.time) / 1000);
+        const stepMeters = haversineMeters(lastGpsFix.lat, lastGpsFix.lng, nextPos[0], nextPos[1]);
+        const speedKmh = (stepMeters / dtSec) * 3.6;
+        $("vHeadingSpeed").textContent =
+          stepMeters >= 0.8
+            ? `${Math.round(currentHeadingDeg)}° • ${speedKmh.toFixed(1)} km/h`
+            : `${Math.round(currentHeadingDeg)}° • Stationary`;
+        lastGpsFix = { lat: nextPos[0], lng: nextPos[1], time: nowMs };
+      }
+
+      if (distMeters < 0.4) return;
+
+      const startHeading = currentHeadingDeg;
+      const targetHeading = computeBearing(startPos[0], startPos[1], nextPos[0], nextPos[1]);
+      currentMarker.setPopupContent(`<b>Live Rider</b><br>${nextPos[0].toFixed(6)}, ${nextPos[1].toFixed(6)}`);
 
       if (markerAnimRaf) cancelAnimationFrame(markerAnimRaf);
-      const startTime = performance.now();
-      const durationMs = 850;
+      const animStart = performance.now();
+      const durationMs = 880;
 
       function step(now) {
-        const t = Math.min(1, (now - startTime) / durationMs);
+        const t = Math.min(1, (now - animStart) / durationMs);
         const ease = 1 - Math.pow(1 - t, 3);
         const lat = startPos[0] + (nextPos[0] - startPos[0]) * ease;
         const lng = startPos[1] + (nextPos[1] - startPos[1]) * ease;
         currentAnimatedLatLng = [lat, lng];
+        currentHeadingDeg = lerpAngle(startHeading, targetHeading, ease);
+
         currentMarker.setLatLng(currentAnimatedLatLng);
+
+        if (!currentMarkerImgEl && currentMarker.getElement()) {
+          currentMarkerImgEl = currentMarker.getElement().querySelector(".bike-marker-img");
+        }
+        if (currentMarkerImgEl) {
+          currentMarkerImgEl.style.transform = `rotate(${currentHeadingDeg.toFixed(1)}deg)`;
+        }
+
         if (t < 1) {
           markerAnimRaf = requestAnimationFrame(step);
         } else {
@@ -1275,37 +1418,50 @@
       const remDurSec = path?.towards_destination?.duration;
       const estTotalSec = ride?.estimated_ride_duration;
       const etaUnix = path?.destination_address?.arrival_time;
+      const waitSec = ride?.started_at && ride?.created_at ? ride.started_at - ride.created_at : null;
 
-      // Telemetry Strip
-      $("vStatusText").textContent = status;
-      $("vStatusPill").className = `pill ${
-        status === "STARTED" ? "pill-live" : status === "COMPLETED" ? "pill-neutral" : "pill-warn"
+      // KPI Strip
+      $("vStatusBadge").textContent = status;
+      $("vStatusBadge").className = `badge ${
+        status === "STARTED" ? "badge-green" : status === "COMPLETED" ? "badge-muted" : "badge-amber"
       }`;
-      $("vOnlinePill").textContent = isOffline ? "OFFLINE" : "ONLINE";
-      $("vOnlinePill").className = `pill ${isOffline ? "pill-red" : "pill-neutral"}`;
+      $("vOnlineBadge").textContent = isOffline ? "OFFLINE" : "ONLINE";
+      $("vOnlineBadge").className = `badge ${isOffline ? "badge-red" : "badge-muted"}`;
       $("vRideMsg").textContent = message;
 
       $("vDistKm").textContent = distMeters != null ? `${(distMeters / 1000).toFixed(2)} km` : "—";
-      $("vDistMeters").textContent = distMeters != null ? `${Math.round(distMeters)} m` : "No route telemetry";
+      $("vDistMeters").textContent = distMeters != null ? `${Math.round(distMeters).toLocaleString()} m` : "—";
 
       $("vEtaDur").textContent = formatDuration(remDurSec);
-      $("vEtaClock").textContent = `Arrival: ${formatTimeOnly(etaUnix, offset)}`;
+      $("vEtaClock").textContent = `ETA ${formatTimeOnly(etaUnix, offset)}`;
 
       $("vTotalDur").textContent = formatDuration(estTotalSec);
-      $("vRideType").textContent = `Type: ${(ride?.ride_type || "—").toUpperCase()}`;
+      $("vPickupWait").textContent = waitSec != null ? `Pickup wait: ${formatDuration(waitSec)}` : "—";
 
-      // Driver & Vehicle (+977 Nepal formatted)
+      $("vRideType").textContent = (ride?.ride_type || "—").toUpperCase();
+      if (!$("vHeadingSpeed").textContent || $("vHeadingSpeed").textContent === "—") {
+        $("vHeadingSpeed").textContent = "Tracking GPS";
+      }
+
+      // Floating Map HUD
+      $("hudStatusText").textContent = message;
+      $("hudEtaText").textContent =
+        remDurSec != null
+          ? `${Math.max(1, Math.round(remDurSec / 60))} min • ${formatTimeOnly(etaUnix, offset)}`
+          : "—";
+
+      // Driver & Vehicle
       const drv = ride?.driver || {};
       const veh = drv.vehicle || {};
       $("vDriverId").textContent = `ID #${drv.id ?? path?.driver_id ?? "—"}`;
-      $("vDriverName").textContent = drv.name || "Unknown Driver";
+      $("vDriverName").textContent = drv.name || "—";
       $("vDriverInit").textContent = initials(drv.name);
 
       const drvPic = resolvePicUrl(drv.profile_pic);
       if (drvPic && drvPic !== lastDriverPic) {
         lastDriverPic = drvPic;
-        const existing = $("vDriverAvatar").querySelector("img");
-        if (existing) existing.remove();
+        const oldImg = $("vDriverAvatar").querySelector("img");
+        if (oldImg) oldImg.remove();
         const img = document.createElement("img");
         img.src = drvPic;
         img.alt = "";
@@ -1321,7 +1477,6 @@
       }
 
       const nepalPhone = formatNepalPhone(drv.number);
-      $("vDriverPhoneText").textContent = nepalPhone.display;
       if (nepalPhone.tel) {
         $("vDriverCallBtn").style.display = "inline-flex";
         $("vDriverCallBtn").href = `tel:${nepalPhone.tel}`;
@@ -1334,7 +1489,7 @@
         $("vDriverCopyBtn").style.display = "none";
       }
 
-      $("vPlateText").textContent = veh.reg_number || "NO PLATE";
+      $("vPlateText").textContent = veh.reg_number || "—";
       if (veh.reg_number) {
         $("vPlateCopyBtn").style.display = "inline-flex";
         $("vPlateCopyBtn").onclick = () => copyText(veh.reg_number, $("vPlateCopyBtn"));
@@ -1345,14 +1500,14 @@
 
       // Passenger
       const rdr = ride?.rider || {};
-      $("vRiderName").textContent = rdr.name || "Unknown Rider";
+      $("vRiderName").textContent = rdr.name || "—";
       $("vRiderInit").textContent = initials(rdr.name);
 
       const rdrPic = resolvePicUrl(rdr.profile_pic);
       if (rdrPic && rdrPic !== lastRiderPic) {
         lastRiderPic = rdrPic;
-        const existing = $("vRiderAvatar").querySelector("img");
-        if (existing) existing.remove();
+        const oldImg = $("vRiderAvatar").querySelector("img");
+        if (oldImg) oldImg.remove();
         const img = document.createElement("img");
         img.src = rdrPic;
         img.alt = "";
@@ -1368,7 +1523,7 @@
       }
 
       const emerg = ride?.emergency_number || "100";
-      $("vEmergencyBtn").textContent = `Emergency: ${emerg}`;
+      $("vEmergencyBtn").textContent = `Emergency ${emerg}`;
       $("vEmergencyBtn").href = `tel:${emerg}`;
       $("vDropoffFlag").textContent = `Dropoff Set: ${ride?.has_dropoff ? "Yes" : "No"}`;
 
@@ -1387,6 +1542,8 @@
       const dAddr = ride?.dropoff_address || path?.destination_address?.street || "—";
       const dArr = path?.destination_address?.arrival_time;
 
+      $("hudDestText").textContent = dAddr;
+
       $("vPickupTitle").textContent = `Pickup${pReached ? " • Reached" : ""}${pArr ? " • " + formatTimeOnly(pArr, offset) : ""}`;
       $("vPickupAddr").textContent = pAddr;
       if (pLat != null && pLng != null) {
@@ -1403,11 +1560,11 @@
             ? ride.stoppages
                 .map(
                   (s, idx) => `
-                  <div class="route-item">
-                    <div class="node-col"><span class="node-dot" style="background:var(--amber);"></span></div>
+                  <div class="wp-item">
+                    <div class="wp-marker"><span class="wp-dot" style="background:var(--amber);"></span></div>
                     <div>
-                      <div class="route-title">Stoppage #${idx + 1}</div>
-                      <div class="route-addr">${esc(typeof s === "string" ? s : s.address || s.street || JSON.stringify(s))}</div>
+                      <div class="wp-label">Stoppage ${idx + 1}</div>
+                      <div class="wp-addr">${esc(typeof s === "string" ? s : s.address || s.street || JSON.stringify(s))}</div>
                     </div>
                   </div>`
                 )
@@ -1420,7 +1577,7 @@
         $("vLiveMapLink").style.display = "inline-flex";
         $("vLiveMapLink").href = `https://maps.google.com/?q=${cLat},${cLng}`;
       } else {
-        $("vLiveCoords").textContent = "Unavailable";
+        $("vLiveCoords").textContent = "—";
         $("vLiveMapLink").style.display = "none";
       }
 
@@ -1438,8 +1595,7 @@
         $("extMapsBtn").href = `https://maps.google.com/?q=${cLat},${cLng}`;
       }
 
-      // Timestamps & Metadata
-      const waitSec = ride?.started_at && ride?.created_at ? ride.started_at - ride.created_at : null;
+      // Session Timestamps & Exact Fields
       $("rideIdBadge").textContent = rideId;
       $("rideIdBadge").onclick = () => copyText(rideId, $("rideIdBadge"));
 
@@ -1449,23 +1605,18 @@
         ["Pickup Arrival", formatUnix(pArr, offset)],
         ["Est. Dropoff", formatUnix(dArr, offset)],
         ["Server Time", formatUnix(path?.server_time, offset)],
-        ["Pickup Wait", waitSec != null ? formatDuration(waitSec) : "—"],
-        ["Timezone Offset", formatOffset(offset)],
-        ["Driver Phone (+977)", nepalPhone.display],
+        ["Timezone", formatOffset(offset)],
+        ["Driver Phone", nepalPhone.display],
+        ["Stoppages", Array.isArray(ride?.stoppages) ? `${ride.stoppages.length}` : "None"],
         ["Est. Pickup GPS", ride?.estimated_pickup_latitude != null ? `${ride.estimated_pickup_latitude}, ${ride.estimated_pickup_longitude}` : "—"],
         ["Ride Endpoint GPS", ride?.current_latitude != null ? `${ride.current_latitude}, ${ride.current_longitude}` : "—"]
       ];
 
       $("metaGrid").innerHTML = metaRows
-        .map(([k, v]) => `<div class="kv-item"><span class="kv-k">${esc(k)}</span><span class="kv-v">${esc(v)}</span></div>`)
+        .map(([k, v]) => `<div class="meta-row"><span class="meta-k">${esc(k)}</span><span class="meta-v">${esc(v)}</span></div>`)
         .join("");
 
-      if ($("rawJsonDetails").open) {
-        $("rawRideJson").textContent = JSON.stringify(ride, null, 2);
-        $("rawPathJson").textContent = JSON.stringify(path, null, 2);
-      }
-
-      // Map Updates (Zero-flicker persistent layers)
+      // Map Layers
       ensureMap();
       if (wasHidden) {
         setTimeout(() => mapInstance.invalidateSize(), 40);
@@ -1475,17 +1626,16 @@
       const polyStr = path?.towards_destination?.polyline || "";
       if (polyStr !== lastPolylineEncoded) {
         lastPolylineEncoded = polyStr;
-        const coords = polyStr ? decodePolyline(polyStr, 5) : [];
-        routePolyline.setLatLngs(coords);
-        coords.forEach((pt) => boundsPoints.push(pt));
-      } else if (routePolyline) {
-        routePolyline.getLatLngs().forEach((ll) => boundsPoints.push([ll.lat, ll.lng]));
+        decodedRouteCoords = polyStr ? decodePolyline(polyStr, 5) : [];
+        routeCasing.setLatLngs(decodedRouteCoords);
+        routePolyline.setLatLngs(decodedRouteCoords);
       }
+      decodedRouteCoords.forEach((pt) => boundsPoints.push(pt));
 
       if (pLat != null && pLng != null) {
         const pPos = [Number(pLat), Number(pLng)];
         if (!pickupMarker) {
-          pickupMarker = L.marker(pPos, { icon: staticPinIcon("#10b981", "Pickup") })
+          pickupMarker = L.marker(pPos, { icon: pickupPinIcon() })
             .bindPopup(`<b>Pickup</b><br>${esc(pAddr)}`)
             .addTo(mapInstance);
         } else {
@@ -1497,7 +1647,7 @@
       if (dLat != null && dLng != null) {
         const dPos = [Number(dLat), Number(dLng)];
         if (!dropoffMarker) {
-          dropoffMarker = L.marker(dPos, { icon: staticPinIcon("#e82e3f", "Destination") })
+          dropoffMarker = L.marker(dPos, { icon: dropoffPinIcon(), zIndexOffset: 800 })
             .bindPopup(`<b>Destination</b><br>${esc(dAddr)}`)
             .addTo(mapInstance);
         } else {
@@ -1515,7 +1665,7 @@
         lastBounds = L.latLngBounds(boundsPoints);
         if (!initialFitDone) {
           initialFitDone = true;
-          mapInstance.fitBounds(lastBounds, { padding: [40, 40], maxZoom: 16 });
+          mapInstance.fitBounds(lastBounds, { padding: [46, 46], maxZoom: 16 });
         }
       }
     }
@@ -1549,7 +1699,7 @@
 
       if (isManualStart) {
         $("fetchBtn").disabled = true;
-        setStatus(`Connecting to ${currentRideId}...`);
+        setStatus("Connecting...");
       }
 
       try {
@@ -1564,16 +1714,13 @@
         const pathData = pathRes.status === "fulfilled" ? pathRes.value : null;
 
         if (!rideData && !pathData) {
-          const reason = rideRes.reason?.message || pathRes.reason?.message || "Blocked or expired";
-          setStatus(`Error (${reason}) — retrying in 1s or use Paste JSON`, "error");
+          const reason = rideRes.reason?.message || pathRes.reason?.message || "Unavailable";
+          setStatus(`Error: ${reason}`, "err");
         } else {
           patchDashboard(rideData || latestRideJson, pathData || latestPathJson, currentRideId);
           $("liveToggleBtn").style.display = "inline-flex";
-          const latency = Math.round(performance.now() - t0);
-          setStatus(
-            `LIVE 1s • ${new Date().toLocaleTimeString()} (${latency}ms)`,
-            "ok"
-          );
+          const ms = Math.round(performance.now() - t0);
+          setStatus(`LIVE • ${ms}ms`, "ok");
         }
       } finally {
         inFlight = false;
@@ -1585,35 +1732,37 @@
     function startTracking(rawInput) {
       const rideId = extractRideId(rawInput);
       if (!rideId) {
-        setStatus("Invalid Pathao URL or Ride ID", "error");
+        setStatus("Invalid URL", "err");
         return;
       }
 
       stopPollingLoop();
 
-      // Reset per-ride state cleanly
       currentRideId = rideId;
       initialFitDone = false;
       lastPolylineEncoded = null;
+      decodedRouteCoords = [];
       lastDriverPic = null;
       lastRiderPic = null;
       lastStoppagesSig = null;
       currentAnimatedLatLng = null;
+      currentMarkerImgEl = null;
+      lastGpsFix = null;
 
       if (pickupMarker) { pickupMarker.remove(); pickupMarker = null; }
       if (currentMarker) { currentMarker.remove(); currentMarker = null; }
       if (dropoffMarker) { dropoffMarker.remove(); dropoffMarker = null; }
+      if (routeCasing) { routeCasing.setLatLngs([]); }
       if (routePolyline) { routePolyline.setLatLngs([]); }
 
       liveSyncEnabled = true;
-      $("liveToggleBtn").classList.add("active");
-      $("liveToggleBtn").textContent = "1s Live Sync: ON";
+      $("liveToggleBtn").classList.add("live-on");
+      $("liveToggleBtn").innerHTML = `<span class="dot-pulse"></span><span>1s Live</span>`;
 
       const token = ++pollSessionToken;
       runPollCycle(token, true);
     }
 
-    // Event Bindings
     $("lookupForm").addEventListener("submit", (e) => {
       e.preventDefault();
       startTracking($("urlInput").value);
@@ -1621,21 +1770,21 @@
 
     $("liveToggleBtn").addEventListener("click", () => {
       liveSyncEnabled = !liveSyncEnabled;
-      $("liveToggleBtn").classList.toggle("active", liveSyncEnabled);
-      $("liveToggleBtn").textContent = liveSyncEnabled ? "1s Live Sync: ON" : "1s Live Sync: PAUSED";
+      $("liveToggleBtn").classList.toggle("live-on", liveSyncEnabled);
       if (liveSyncEnabled && currentRideId) {
+        $("liveToggleBtn").innerHTML = `<span class="dot-pulse"></span><span>1s Live</span>`;
         const token = ++pollSessionToken;
         runPollCycle(token, false);
       } else {
         stopPollingLoop();
-        setStatus("Live 1s sync paused");
+        $("liveToggleBtn").textContent = "Paused";
+        setStatus("Paused");
       }
     });
 
     $("followLiveBtn").addEventListener("click", () => {
       followLive = !followLive;
       $("followLiveBtn").classList.toggle("active", followLive);
-      $("followLiveBtn").textContent = followLive ? "Follow Live: ON" : "Follow Live: OFF";
       if (followLive && currentAnimatedLatLng && mapInstance) {
         mapInstance.panTo(currentAnimatedLatLng, { animate: true, duration: 0.4 });
       }
@@ -1663,7 +1812,7 @@
 
     $("fitBoundsBtn").addEventListener("click", () => {
       if (mapInstance && lastBounds) {
-        mapInstance.fitBounds(lastBounds, { padding: [40, 40], maxZoom: 16 });
+        mapInstance.fitBounds(lastBounds, { padding: [46, 46], maxZoom: 16 });
       }
     });
 
@@ -1671,34 +1820,14 @@
       ensureMap();
       followLive = false;
       $("followLiveBtn").classList.remove("active");
-      $("followLiveBtn").textContent = "Follow Live: OFF";
-      mapInstance.flyTo(KATHMANDU_CENTER, 13, { duration: 0.6 });
+      mapInstance.flyTo(KATHMANDU_CENTER, 13, { duration: 0.55 });
     });
 
     $("focusNepalBtn").addEventListener("click", () => {
       ensureMap();
       followLive = false;
       $("followLiveBtn").classList.remove("active");
-      $("followLiveBtn").textContent = "Follow Live: OFF";
       mapInstance.fitBounds(NEPAL_BOUNDS, { padding: [16, 16] });
-    });
-
-    $("rawJsonDetails").addEventListener("toggle", () => {
-      if ($("rawJsonDetails").open) {
-        $("rawRideJson").textContent = JSON.stringify(latestRideJson, null, 2);
-        $("rawPathJson").textContent = JSON.stringify(latestPathJson, null, 2);
-      }
-    });
-
-    $("loadSampleBtn").addEventListener("click", () => {
-      stopPollingLoop();
-      const sampleUrl = `https://pages.pathao.com/share-ride/${SAMPLE_ID}`;
-      $("urlInput").value = sampleUrl;
-      currentRideId = SAMPLE_ID;
-      initialFitDone = false;
-      lastPolylineEncoded = null;
-      patchDashboard(SAMPLE_RIDE, SAMPLE_PATH, SAMPLE_ID);
-      setStatus("Sample Kathmandu ride loaded", "ok");
     });
 
     $("openManualBtn").addEventListener("click", () => $("manualModal").classList.add("open"));
@@ -1715,14 +1844,14 @@
         const rJson = rRaw ? JSON.parse(rRaw) : null;
         const pJson = pRaw ? JSON.parse(pRaw) : null;
         if (!rJson && !pJson) return;
-        const id = extractRideId($("urlInput").value) || "MANUAL_PAYLOAD";
+        const id = extractRideId($("urlInput").value) || "RIDE_SESSION";
         initialFitDone = false;
         lastPolylineEncoded = null;
         patchDashboard(rJson, pJson, id);
         $("manualModal").classList.remove("open");
-        setStatus("Rendered pasted JSON", "ok");
+        setStatus("Loaded", "ok");
       } catch (err) {
-        setStatus(`JSON syntax error: ${err.message}`, "error");
+        setStatus(`Invalid JSON: ${err.message}`, "err");
       }
     });
 
