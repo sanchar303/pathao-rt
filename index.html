@@ -9,20 +9,24 @@
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
   <style>
     :root {
-      --bg: #0c1015;
-      --panel: #131920;
-      --panel-alt: #182029;
-      --border: #232d38;
-      --border-hi: #32404f;
+      --bg: #11151c;
+      --surface: #151a23;
+      --surface-hi: #1a202b;
+      --surface-lo: #0d1016;
+      --border-light: rgba(255, 255, 255, 0.065);
+      --border-dark: rgba(0, 0, 0, 0.55);
+      --shadow-dark: rgba(5, 7, 11, 0.82);
+      --shadow-light: rgba(36, 44, 58, 0.34);
       --text: #f1f5f9;
-      --muted: #8a99ad;
+      --muted: #8b9bb0;
       --pathao: #e82e3f;
-      --pathao-hover: #f33b4c;
+      --pathao-hi: #f53d4e;
       --green: #10b981;
       --amber: #f59e0b;
       --sky: #38bdf8;
       --mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
       --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Inter, sans-serif;
+      --ease: cubic-bezier(0.22, 1, 0.36, 1);
     }
 
     * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -33,7 +37,7 @@
     }
 
     body {
-      background: var(--bg);
+      background: radial-gradient(circle at 18% 0%, #181e29 0%, var(--bg) 52%, #0d1016 100%);
       color: var(--text);
       font-family: var(--sans);
       min-height: 100vh;
@@ -41,12 +45,38 @@
       flex-direction: column;
       line-height: 1.45;
       -webkit-font-smoothing: antialiased;
+      user-select: none;
     }
 
-    /* Top Header */
+    input, textarea {
+      user-select: text;
+    }
+
+    /* Neumorphic Primitives */
+    .neu-outset {
+      background: linear-gradient(145deg, var(--surface-hi), var(--surface));
+      border: 1px solid var(--border-light);
+      box-shadow:
+        7px 7px 16px var(--shadow-dark),
+        -5px -5px 13px var(--shadow-light),
+        inset 0 1px 0 rgba(255, 255, 255, 0.08);
+    }
+
+    .neu-inset {
+      background: linear-gradient(145deg, #0c0f14, #12161e);
+      border: 1px solid rgba(255, 255, 255, 0.035);
+      box-shadow:
+        inset 4px 4px 9px rgba(4, 6, 9, 0.88),
+        inset -3px -3px 7px rgba(33, 41, 54, 0.28);
+    }
+
+    /* Top Bar */
     .topbar {
-      background: var(--panel);
-      border-bottom: 1px solid var(--border);
+      background: rgba(19, 24, 32, 0.92);
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+      border-bottom: 1px solid var(--border-light);
+      box-shadow: 0 8px 24px rgba(4, 6, 10, 0.65);
       padding: 12px 16px;
       position: sticky;
       top: 0;
@@ -58,14 +88,14 @@
       margin: 0 auto;
       display: flex;
       align-items: center;
-      gap: 10px;
+      gap: 12px;
       flex-wrap: wrap;
     }
 
     .brand {
       display: flex;
       align-items: center;
-      gap: 9px;
+      gap: 10px;
       font-weight: 700;
       font-size: 15px;
       letter-spacing: -0.01em;
@@ -73,40 +103,53 @@
       margin-right: auto;
     }
 
-    @media (min-width: 860px) {
+    @media (min-width: 880px) {
       .brand { margin-right: 4px; }
     }
 
-    .brand img {
-      width: 24px;
-      height: 24px;
-      border-radius: 6px;
+    .brand-icon {
+      width: 32px;
+      height: 32px;
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: linear-gradient(145deg, #1d2430, #12161e);
+      border: 1px solid var(--border-light);
+      box-shadow: 3px 3px 8px var(--shadow-dark), -2px -2px 6px var(--shadow-light), inset 0 1px 0 rgba(255,255,255,0.1);
+    }
+
+    .brand-icon img {
+      width: 20px;
+      height: 20px;
+      border-radius: 5px;
       display: block;
-      flex-shrink: 0;
     }
 
     .header-controls {
       display: flex;
       align-items: center;
-      gap: 8px;
+      gap: 9px;
       flex-wrap: wrap;
     }
 
     .url-form {
-      flex: 1 1 320px;
+      flex: 1 1 340px;
       display: flex;
       align-items: center;
-      background: var(--bg);
-      border: 1px solid var(--border);
-      border-radius: 10px;
-      padding: 4px 4px 4px 12px;
+      border-radius: 13px;
+      padding: 4px 5px 4px 13px;
       gap: 8px;
       min-width: 0;
-      transition: border-color 0.15s;
+      transition: border-color 0.16s var(--ease), box-shadow 0.16s var(--ease);
     }
 
     .url-form:focus-within {
-      border-color: var(--pathao);
+      border-color: rgba(232, 46, 63, 0.55);
+      box-shadow:
+        inset 4px 4px 9px rgba(4, 6, 9, 0.9),
+        inset -3px -3px 7px rgba(33, 41, 54, 0.28),
+        0 0 0 2px rgba(232, 46, 63, 0.16);
     }
 
     .url-input {
@@ -116,19 +159,20 @@
       outline: none;
       color: var(--text);
       font-family: var(--mono);
-      font-size: 13px;
+      font-size: 12.5px;
       min-width: 0;
       width: 100%;
     }
 
     .url-input::placeholder {
-      color: #5c6b7d;
+      color: #5c6b7e;
       font-family: var(--sans);
     }
 
+    /* Neumorphic Buttons */
     .btn {
-      border: 1px solid transparent;
-      border-radius: 8px;
+      border: 1px solid var(--border-light);
+      border-radius: 10px;
       font-size: 12.5px;
       font-weight: 600;
       padding: 8px 14px;
@@ -138,56 +182,80 @@
       justify-content: center;
       gap: 6px;
       white-space: nowrap;
-      transition: background 0.15s, border-color 0.15s, opacity 0.15s;
+      transition: transform 0.14s var(--ease), box-shadow 0.16s var(--ease), background 0.16s var(--ease), border-color 0.16s var(--ease);
     }
 
     .btn:disabled { opacity: 0.5; cursor: not-allowed; }
 
     .btn-primary {
-      background: var(--pathao);
+      background: linear-gradient(145deg, var(--pathao-hi), #c92030);
+      border-color: rgba(255, 255, 255, 0.18);
       color: #fff;
+      box-shadow:
+        4px 4px 10px rgba(5, 7, 11, 0.7),
+        -2px -2px 7px rgba(255, 85, 100, 0.14),
+        inset 0 1px 0 rgba(255, 255, 255, 0.28);
     }
 
     .btn-primary:hover:not(:disabled) {
-      background: var(--pathao-hover);
+      background: linear-gradient(145deg, #ff4758, var(--pathao));
+    }
+
+    .btn-primary:active:not(:disabled) {
+      transform: translateY(1px);
+      box-shadow: inset 3px 3px 7px rgba(110, 12, 22, 0.75);
     }
 
     .btn-subtle {
-      background: var(--panel-alt);
-      border-color: var(--border);
+      background: linear-gradient(145deg, var(--surface-hi), var(--surface));
       color: var(--text);
+      box-shadow:
+        4px 4px 10px var(--shadow-dark),
+        -3px -3px 8px var(--shadow-light),
+        inset 0 1px 0 rgba(255, 255, 255, 0.07);
     }
 
     .btn-subtle:hover:not(:disabled) {
-      border-color: var(--border-hi);
-      background: #1f2935;
+      border-color: rgba(255, 255, 255, 0.12);
+    }
+
+    .btn-subtle:active:not(:disabled) {
+      transform: translateY(1px);
+      box-shadow:
+        inset 3px 3px 7px rgba(4, 6, 9, 0.85),
+        inset -2px -2px 5px rgba(33, 41, 54, 0.25);
     }
 
     .btn-subtle.live-on {
-      border-color: rgba(16, 185, 129, 0.45);
+      border-color: rgba(16, 185, 129, 0.4);
       color: var(--green);
-      background: rgba(16, 185, 129, 0.09);
+      background: linear-gradient(145deg, rgba(16, 185, 129, 0.14), rgba(16, 185, 129, 0.06));
+      box-shadow:
+        inset 2px 2px 6px rgba(4, 6, 9, 0.7),
+        inset -2px -2px 5px rgba(16, 185, 129, 0.12);
     }
 
-    .sync-status {
+    .sync-pill {
+      padding: 6px 11px;
+      border-radius: 10px;
       font-family: var(--mono);
-      font-size: 11.5px;
+      font-size: 11px;
       color: var(--muted);
-      display: flex;
+      display: inline-flex;
       align-items: center;
       gap: 6px;
       white-space: nowrap;
     }
 
-    .sync-status.ok { color: var(--green); }
-    .sync-status.err { color: #f87171; }
+    .sync-pill.ok { color: var(--green); }
+    .sync-pill.err { color: #f87171; }
 
     .dot-pulse {
       width: 7px;
       height: 7px;
       border-radius: 50%;
       background: currentColor;
-      animation: blink 1.2s infinite;
+      animation: blink 1.4s ease-in-out infinite;
     }
 
     @keyframes blink {
@@ -195,28 +263,28 @@
       50% { opacity: 0.25; }
     }
 
-    @media (max-width: 859px) {
+    @media (max-width: 879px) {
       .url-form { order: 3; flex: 1 1 100%; }
       .header-controls { order: 2; }
     }
 
-    /* Main Workspace */
+    /* Workspace */
     .workspace {
       flex: 1;
       max-width: 1440px;
       width: 100%;
       margin: 0 auto;
-      padding: 16px;
+      padding: 18px 16px 26px;
       display: flex;
       flex-direction: column;
-      gap: 16px;
+      gap: 18px;
     }
 
     /* KPI Strip */
     .kpi-grid {
       display: grid;
       grid-template-columns: repeat(5, minmax(0, 1fr));
-      gap: 12px;
+      gap: 14px;
     }
 
     @media (max-width: 1120px) {
@@ -224,24 +292,23 @@
     }
 
     @media (max-width: 640px) {
-      .kpi-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+      .kpi-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 11px; }
       .kpi-grid .kpi-card:last-child { grid-column: 1 / -1; }
     }
 
     .kpi-card {
-      background: var(--panel);
-      border: 1px solid var(--border);
-      border-radius: 12px;
-      padding: 12px 14px;
+      border-radius: 16px;
+      padding: 13px 15px;
       min-width: 0;
     }
 
     .kpi-label {
-      font-size: 11px;
+      font-size: 10.5px;
+      font-weight: 700;
       text-transform: uppercase;
-      letter-spacing: 0.05em;
+      letter-spacing: 0.06em;
       color: var(--muted);
-      margin-bottom: 4px;
+      margin-bottom: 6px;
     }
 
     .kpi-value {
@@ -258,7 +325,7 @@
       font-size: 11.5px;
       font-family: var(--mono);
       color: var(--muted);
-      margin-top: 3px;
+      margin-top: 4px;
       overflow: hidden;
       text-overflow: ellipsis;
       white-space: nowrap;
@@ -268,24 +335,25 @@
       display: inline-flex;
       align-items: center;
       gap: 5px;
-      padding: 2px 8px;
-      border-radius: 6px;
-      font-size: 11px;
+      padding: 3px 9px;
+      border-radius: 8px;
+      font-size: 10.5px;
       font-weight: 700;
-      letter-spacing: 0.03em;
+      letter-spacing: 0.04em;
       text-transform: uppercase;
+      box-shadow: inset 2px 2px 5px rgba(4, 6, 9, 0.65), 0 1px 0 rgba(255,255,255,0.06);
     }
 
-    .badge-green { background: rgba(16, 185, 129, 0.14); color: var(--green); border: 1px solid rgba(16, 185, 129, 0.3); }
-    .badge-amber { background: rgba(245, 158, 11, 0.14); color: var(--amber); border: 1px solid rgba(245, 158, 11, 0.3); }
-    .badge-red   { background: rgba(232, 46, 63, 0.14); color: #ff6b78; border: 1px solid rgba(232, 46, 63, 0.3); }
-    .badge-muted { background: var(--panel-alt); color: var(--muted); border: 1px solid var(--border); }
+    .badge-green { background: rgba(16, 185, 129, 0.14); color: var(--green); border: 1px solid rgba(16, 185, 129, 0.32); }
+    .badge-amber { background: rgba(245, 158, 11, 0.14); color: var(--amber); border: 1px solid rgba(245, 158, 11, 0.32); }
+    .badge-red   { background: rgba(232, 46, 63, 0.14); color: #ff6b78; border: 1px solid rgba(232, 46, 63, 0.32); }
+    .badge-muted { background: #10141c; color: var(--muted); border: 1px solid rgba(255, 255, 255, 0.05); }
 
     /* Main Split Layout */
     .main-grid {
       display: grid;
       grid-template-columns: 1.45fr 1fr;
-      gap: 16px;
+      gap: 18px;
       align-items: start;
     }
 
@@ -293,26 +361,24 @@
       .main-grid { grid-template-columns: 1fr; }
     }
 
-    /* Map Container */
+    /* Map Shell */
     .map-shell {
-      background: var(--panel);
-      border: 1px solid var(--border);
-      border-radius: 14px;
+      border-radius: 18px;
       overflow: hidden;
       position: relative;
-      height: 650px;
+      height: 620px;
       display: flex;
       flex-direction: column;
     }
 
     @media (max-width: 980px) {
-      .map-shell { height: clamp(380px, 56vh, 520px); }
+      .map-shell { height: clamp(380px, 54vh, 500px); }
     }
 
     .map-toolbar {
-      background: var(--panel);
-      border-bottom: 1px solid var(--border);
-      padding: 9px 12px;
+      background: linear-gradient(180deg, var(--surface-hi), var(--surface));
+      border-bottom: 1px solid var(--border-light);
+      padding: 10px 13px;
       display: flex;
       justify-content: space-between;
       align-items: center;
@@ -324,15 +390,15 @@
     .chip-group {
       display: flex;
       align-items: center;
-      gap: 6px;
+      gap: 7px;
       flex-wrap: wrap;
     }
 
     .chip {
-      background: var(--panel-alt);
-      border: 1px solid var(--border);
+      background: linear-gradient(145deg, var(--surface-hi), var(--surface));
+      border: 1px solid var(--border-light);
       color: var(--muted);
-      border-radius: 7px;
+      border-radius: 9px;
       padding: 5px 10px;
       font-size: 11.5px;
       font-weight: 600;
@@ -341,25 +407,38 @@
       display: inline-flex;
       align-items: center;
       gap: 5px;
-      transition: all 0.14s;
-      user-select: none;
+      transition: all 0.15s var(--ease);
+      box-shadow:
+        3px 3px 7px var(--shadow-dark),
+        -2px -2px 5px var(--shadow-light),
+        inset 0 1px 0 rgba(255, 255, 255, 0.06);
     }
 
-    .chip:hover { color: var(--text); border-color: var(--border-hi); }
+    .chip:hover {
+      color: var(--text);
+      border-color: rgba(255, 255, 255, 0.13);
+    }
+
+    .chip:active {
+      box-shadow: inset 2px 2px 5px rgba(4, 6, 9, 0.85);
+    }
+
     .chip.active {
-      background: var(--pathao);
-      border-color: var(--pathao);
+      background: linear-gradient(145deg, var(--pathao-hi), #c81e2e);
+      border-color: rgba(255, 255, 255, 0.2);
       color: #fff;
+      box-shadow:
+        inset 2px 2px 5px rgba(105, 10, 20, 0.55),
+        0 2px 8px rgba(232, 46, 63, 0.28);
     }
 
     #map {
       flex: 1;
       width: 100%;
-      background: #0e1319;
+      background: #0d1117;
       z-index: 1;
     }
 
-    /* Zero-API-Key Dark Mode Tile Filter (keeps markers, routes, and HUD untouched) */
     .leaflet-layer.dark-osm-tiles {
       filter: invert(100%) hue-rotate(180deg) brightness(94%) contrast(92%) saturate(78%);
     }
@@ -371,17 +450,19 @@
       left: 12px;
       right: 12px;
       max-width: 440px;
-      background: rgba(19, 25, 32, 0.94);
-      backdrop-filter: blur(10px);
-      -webkit-backdrop-filter: blur(10px);
-      border: 1px solid var(--border-hi);
-      border-radius: 12px;
+      background: rgba(19, 24, 33, 0.92);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border: 1px solid rgba(255, 255, 255, 0.09);
+      border-radius: 14px;
       padding: 10px 13px;
       z-index: 400;
       display: flex;
       align-items: center;
       gap: 11px;
-      box-shadow: 0 10px 28px rgba(0, 0, 0, 0.45);
+      box-shadow:
+        0 12px 28px rgba(4, 6, 10, 0.72),
+        inset 0 1px 0 rgba(255, 255, 255, 0.09);
       pointer-events: auto;
     }
 
@@ -396,11 +477,9 @@
     }
 
     .map-hud-icon {
-      width: 36px;
-      height: 36px;
-      border-radius: 9px;
-      background: var(--panel-alt);
-      border: 1px solid var(--border);
+      width: 38px;
+      height: 38px;
+      border-radius: 11px;
       display: flex;
       align-items: center;
       justify-content: center;
@@ -435,10 +514,11 @@
     }
 
     .leaflet-popup-content-wrapper, .leaflet-popup-tip {
-      background: var(--panel);
+      background: var(--surface);
       color: var(--text);
-      border: 1px solid var(--border-hi);
-      border-radius: 10px;
+      border: 1px solid var(--border-light);
+      border-radius: 12px;
+      box-shadow: 0 10px 24px rgba(0, 0, 0, 0.65);
     }
 
     /* Rotating Top-Down Bike Marker */
@@ -487,15 +567,13 @@
     .side-col {
       display: flex;
       flex-direction: column;
-      gap: 14px;
+      gap: 16px;
       min-width: 0;
     }
 
     .card {
-      background: var(--panel);
-      border: 1px solid var(--border);
-      border-radius: 14px;
-      padding: 16px;
+      border-radius: 18px;
+      padding: 17px;
       min-width: 0;
     }
 
@@ -503,31 +581,29 @@
       display: flex;
       justify-content: space-between;
       align-items: center;
-      margin-bottom: 12px;
+      margin-bottom: 13px;
       gap: 8px;
       flex-wrap: wrap;
     }
 
     .card-title {
-      font-size: 11.5px;
+      font-size: 11px;
       font-weight: 700;
       text-transform: uppercase;
-      letter-spacing: 0.06em;
+      letter-spacing: 0.07em;
       color: var(--muted);
     }
 
     .profile-row {
       display: flex;
       align-items: center;
-      gap: 13px;
+      gap: 14px;
     }
 
     .avatar {
-      width: 56px;
-      height: 56px;
+      width: 58px;
+      height: 58px;
       border-radius: 50%;
-      background: var(--panel-alt);
-      border: 1.5px solid var(--border-hi);
       display: flex;
       align-items: center;
       justify-content: center;
@@ -537,11 +613,17 @@
       overflow: hidden;
       flex-shrink: 0;
       position: relative;
+      background: linear-gradient(145deg, #1b222e, #10141c);
+      border: 1.5px solid rgba(255, 255, 255, 0.08);
+      box-shadow:
+        4px 4px 10px var(--shadow-dark),
+        -3px -3px 8px var(--shadow-light),
+        inset 0 1px 0 rgba(255, 255, 255, 0.1);
     }
 
     .avatar.has-photo {
       cursor: zoom-in;
-      border-color: var(--pathao);
+      border-color: rgba(232, 46, 63, 0.7);
     }
 
     .avatar img {
@@ -567,15 +649,15 @@
       align-items: center;
       gap: 8px;
       flex-wrap: wrap;
-      margin-top: 6px;
+      margin-top: 7px;
     }
 
     .call-link {
-      background: rgba(16, 185, 129, 0.14);
-      border: 1px solid rgba(16, 185, 129, 0.38);
+      background: linear-gradient(145deg, rgba(16, 185, 129, 0.2), rgba(16, 185, 129, 0.1));
+      border: 1px solid rgba(16, 185, 129, 0.36);
       color: var(--green);
-      border-radius: 7px;
-      padding: 5px 10px;
+      border-radius: 9px;
+      padding: 5px 11px;
       font-family: var(--mono);
       font-size: 12px;
       font-weight: 700;
@@ -583,16 +665,18 @@
       display: inline-flex;
       align-items: center;
       gap: 6px;
+      box-shadow: 3px 3px 8px var(--shadow-dark), inset 0 1px 0 rgba(255, 255, 255, 0.12);
+      transition: all 0.15s var(--ease);
     }
 
     .call-link:hover {
-      background: rgba(16, 185, 129, 0.24);
+      background: linear-gradient(145deg, rgba(16, 185, 129, 0.28), rgba(16, 185, 129, 0.15));
     }
 
     .vehicle-strip {
-      margin-top: 12px;
-      padding-top: 12px;
-      border-top: 1px solid var(--border);
+      margin-top: 14px;
+      padding-top: 13px;
+      border-top: 1px solid rgba(255, 255, 255, 0.055);
       display: flex;
       align-items: center;
       justify-content: space-between;
@@ -604,14 +688,12 @@
       display: inline-flex;
       align-items: center;
       gap: 8px;
-      background: var(--bg);
-      border: 1px solid var(--border-hi);
-      border-radius: 8px;
-      padding: 5px 10px;
+      border-radius: 10px;
+      padding: 6px 11px;
       font-family: var(--mono);
       font-size: 12.5px;
       font-weight: 700;
-      letter-spacing: 0.03em;
+      letter-spacing: 0.04em;
     }
 
     .vehicle-meta {
@@ -646,7 +728,7 @@
     .wp-marker {
       display: flex;
       justify-content: center;
-      padding-top: 3px;
+      padding-top: 4px;
     }
 
     .wp-dot {
@@ -655,13 +737,14 @@
       border-radius: 50%;
     }
 
-    .wp-dot.pickup { background: var(--green); }
-    .wp-dot.live { background: var(--sky); }
+    .wp-dot.pickup { background: var(--green); box-shadow: 0 0 8px rgba(16, 185, 129, 0.55); }
+    .wp-dot.live { background: var(--sky); box-shadow: 0 0 8px rgba(56, 189, 248, 0.55); }
 
     .wp-label {
-      font-size: 11px;
+      font-size: 10.5px;
+      font-weight: 700;
       text-transform: uppercase;
-      letter-spacing: 0.05em;
+      letter-spacing: 0.06em;
       color: var(--muted);
     }
 
@@ -683,34 +766,239 @@
       flex-wrap: wrap;
     }
 
-    /* Bottom Telemetry Table */
-    .meta-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-      gap: 4px 20px;
-    }
-
-    @media (max-width: 480px) {
-      .meta-grid { grid-template-columns: 1fr; }
-    }
-
-    .meta-row {
+    /* Cloud RTDB Directory Section */
+    .rtdb-section {
+      border-radius: 18px;
+      padding: 18px;
       display: flex;
-      justify-content: space-between;
-      align-items: baseline;
-      padding: 7px 0;
-      border-bottom: 1px solid rgba(255, 255, 255, 0.05);
-      gap: 12px;
+      flex-direction: column;
+      gap: 15px;
     }
 
-    .meta-k { font-size: 12px; color: var(--muted); white-space: nowrap; }
-    .meta-v { font-size: 12px; font-family: var(--mono); font-weight: 600; text-align: right; word-break: break-all; }
+    .rtdb-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .rtdb-title-group {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .rtdb-actions {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex: 1 1 320px;
+      justify-content: flex-end;
+      flex-wrap: wrap;
+    }
+
+    .search-box {
+      flex: 1 1 230px;
+      max-width: 380px;
+      display: flex;
+      align-items: center;
+      border-radius: 11px;
+      padding: 7px 12px;
+      gap: 8px;
+    }
+
+    .search-box input {
+      width: 100%;
+      background: transparent;
+      border: none;
+      outline: none;
+      color: var(--text);
+      font-size: 12.5px;
+      font-family: var(--sans);
+    }
+
+    .search-box input::placeholder {
+      color: #5c6b7e;
+    }
+
+    .records-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 14px;
+    }
+
+    @media (max-width: 1100px) {
+      .records-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    }
+
+    @media (max-width: 680px) {
+      .records-grid { grid-template-columns: 1fr; }
+    }
+
+    .rec-card {
+      background: linear-gradient(145deg, #171c26, #11151d);
+      border: 1px solid var(--border-light);
+      border-radius: 15px;
+      padding: 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      transition: transform 0.15s var(--ease), border-color 0.16s var(--ease), box-shadow 0.16s var(--ease);
+      box-shadow:
+        5px 5px 12px rgba(4, 6, 10, 0.78),
+        -4px -4px 10px rgba(34, 42, 56, 0.26),
+        inset 0 1px 0 rgba(255, 255, 255, 0.07);
+    }
+
+    .rec-card:hover {
+      border-color: rgba(255, 255, 255, 0.13);
+    }
+
+    .rec-card.active-rec {
+      border-color: rgba(232, 46, 63, 0.55);
+      box-shadow:
+        5px 5px 14px rgba(4, 6, 10, 0.85),
+        -3px -3px 9px rgba(34, 42, 56, 0.28),
+        inset 0 0 0 1px rgba(232, 46, 63, 0.25);
+    }
+
+    .rec-top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+    }
+
+    .rec-id-tag {
+      font-family: var(--mono);
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--text);
+      padding: 3px 9px;
+      border-radius: 8px;
+    }
+
+    .rec-driver {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      min-width: 0;
+    }
+
+    .rec-avatar {
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      background: #10141c;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 13px;
+      font-weight: 700;
+      overflow: hidden;
+      flex-shrink: 0;
+    }
+
+    .rec-avatar img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+    }
+
+    .rec-driver-meta {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .rec-driver-name {
+      font-size: 13.5px;
+      font-weight: 700;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .rec-driver-sub {
+      font-size: 11.5px;
+      font-family: var(--mono);
+      color: var(--muted);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .rec-route {
+      border-radius: 10px;
+      padding: 8px 10px;
+      font-size: 11.5px;
+      color: var(--muted);
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .rec-route-line {
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .rec-route-line strong {
+      color: var(--text);
+      font-weight: 600;
+    }
+
+    .rec-foot {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      margin-top: auto;
+      padding-top: 2px;
+    }
+
+    .rec-time {
+      font-size: 10.5px;
+      font-family: var(--mono);
+      color: #6b7b90;
+    }
+
+    .rec-btns {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .chip-danger {
+      color: #ff7b86;
+      border-color: rgba(232, 46, 63, 0.25);
+    }
+
+    .chip-danger:hover {
+      background: rgba(232, 46, 63, 0.16);
+      border-color: rgba(232, 46, 63, 0.45);
+      color: #ffd0d4;
+    }
+
+    .empty-records {
+      grid-column: 1 / -1;
+      text-align: center;
+      padding: 26px 16px;
+      border-radius: 14px;
+      font-size: 13px;
+      color: var(--muted);
+    }
 
     /* Photo Lightbox */
     .lightbox-bg {
       position: fixed;
       inset: 0;
-      background: rgba(0, 0, 0, 0.82);
+      background: rgba(5, 7, 11, 0.84);
+      backdrop-filter: blur(8px);
       display: none;
       align-items: center;
       justify-content: center;
@@ -722,10 +1010,8 @@
     .lightbox-bg.open { display: flex; }
 
     .lightbox-card {
-      background: var(--panel);
-      border: 1px solid var(--border-hi);
-      border-radius: 14px;
-      padding: 14px;
+      border-radius: 18px;
+      padding: 15px;
       max-width: 420px;
       width: 100%;
       text-align: center;
@@ -736,8 +1022,8 @@
       width: 100%;
       max-height: 360px;
       object-fit: contain;
-      border-radius: 10px;
-      background: var(--bg);
+      border-radius: 12px;
+      background: var(--surface-lo);
       display: block;
     }
 
@@ -748,82 +1034,113 @@
       color: var(--text);
     }
 
-    /* Direct Payload Modal */
+    /* Add Record Modal */
     .modal-bg {
       position: fixed;
       inset: 0;
-      background: rgba(0, 0, 0, 0.72);
+      background: rgba(5, 7, 11, 0.8);
+      backdrop-filter: blur(8px);
       display: none;
       align-items: center;
       justify-content: center;
       padding: 16px;
-      z-index: 1000;
+      z-index: 1100;
     }
 
     .modal-bg.open { display: flex; }
 
     .modal-box {
-      background: var(--panel);
-      border: 1px solid var(--border-hi);
-      border-radius: 14px;
+      border-radius: 18px;
       width: 100%;
-      max-width: 620px;
-      padding: 18px;
+      max-width: 480px;
+      padding: 20px;
       display: flex;
       flex-direction: column;
-      gap: 12px;
+      gap: 14px;
     }
 
-    .modal-box textarea {
+    .form-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+
+    @media (max-width: 480px) {
+      .form-grid { grid-template-columns: 1fr; }
+    }
+
+    .field-group {
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+    }
+
+    .field-group.full {
+      grid-column: 1 / -1;
+    }
+
+    .field-label {
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--muted);
+    }
+
+    .field-input {
       width: 100%;
-      height: 115px;
-      background: var(--bg);
-      border: 1px solid var(--border);
-      border-radius: 9px;
-      padding: 10px;
+      border-radius: 10px;
+      padding: 9px 11px;
       color: var(--text);
-      font-family: var(--mono);
-      font-size: 12px;
-      resize: vertical;
+      font-size: 13px;
       outline: none;
+      font-family: var(--sans);
+    }
+
+    .field-input:focus {
+      border-color: rgba(232, 46, 63, 0.55);
     }
 
     footer {
       text-align: center;
-      padding: 14px 16px;
+      padding: 16px;
       font-size: 11.5px;
-      color: #5c6b7d;
-      border-top: 1px solid var(--border);
+      color: #5c6b7e;
+      border-top: 1px solid rgba(255, 255, 255, 0.045);
       margin-top: auto;
     }
   </style>
 </head>
-<body>
+<body oncontextmenu="return false;">
   <header class="topbar">
     <div class="topbar-inner">
       <div class="brand">
-        <img src="https://pages.pathao.com/favicon.ico" alt="" />
+        <div class="brand-icon">
+          <img src="https://pages.pathao.com/favicon.ico" alt="" />
+        </div>
         <span>Pathao Ride Telemetry</span>
       </div>
 
-      <form class="url-form" id="lookupForm" autocomplete="off">
+      <form class="url-form neu-inset" id="lookupForm" autocomplete="off">
         <input
           id="urlInput"
           class="url-input"
           type="text"
-          placeholder="https://pages.pathao.com/share-ride/u----pxXG____UtgQgt7i5O3CYjw=="
+          placeholder="Paste Pathao share-ride URL or saved ID (#14843378)..."
           spellcheck="false"
           required
         />
-        <button type="submit" class="btn btn-primary" id="fetchBtn">Track</button>
+        <button type="submit" class="btn btn-primary" id="fetchBtn">Track &amp; Sync</button>
       </form>
 
       <div class="header-controls">
-        <div class="sync-status" id="statusLine">Kathmandu, Nepal</div>
+        <div class="sync-pill neu-inset" id="statusLine">Ready</div>
+        <div class="sync-pill neu-inset ok" id="rtdbStatusBadge" title="Cloud Studio RTDB">
+          <span class="dot-pulse"></span><span>RTDB Sync</span>
+        </div>
         <button type="button" class="btn btn-subtle live-on" id="liveToggleBtn" style="display:none;">
           <span class="dot-pulse"></span><span>1s Live</span>
         </button>
-        <button type="button" class="btn btn-subtle" id="openManualBtn">JSON Input</button>
       </div>
     </div>
   </header>
@@ -831,34 +1148,34 @@
   <main class="workspace" id="dashboard">
     <!-- Top Telemetry Metrics -->
     <section class="kpi-grid">
-      <div class="kpi-card">
+      <div class="kpi-card neu-outset">
         <div class="kpi-label">Ride Status</div>
         <div class="kpi-value">
           <span class="badge badge-muted" id="vStatusBadge">READY</span>
           <span class="badge badge-muted" id="vOnlineBadge">—</span>
         </div>
-        <div class="kpi-sub" id="vRideMsg">Enter Pathao share-ride URL</div>
+        <div class="kpi-sub" id="vRideMsg">Paste link or select saved ID</div>
       </div>
 
-      <div class="kpi-card">
+      <div class="kpi-card neu-outset">
         <div class="kpi-label" id="vDistLabel">Remaining Distance</div>
         <div class="kpi-value" id="vDistKm">—</div>
         <div class="kpi-sub" id="vDistMeters">—</div>
       </div>
 
-      <div class="kpi-card">
+      <div class="kpi-card neu-outset">
         <div class="kpi-label" id="vEtaLabel">Remaining ETA</div>
         <div class="kpi-value" id="vEtaDur">—</div>
         <div class="kpi-sub" id="vEtaClock">—</div>
       </div>
 
-      <div class="kpi-card">
+      <div class="kpi-card neu-outset">
         <div class="kpi-label" id="vTotalLabel">Est. Total Duration</div>
         <div class="kpi-value" id="vTotalDur">—</div>
         <div class="kpi-sub" id="vPickupWait">—</div>
       </div>
 
-      <div class="kpi-card">
+      <div class="kpi-card neu-outset">
         <div class="kpi-label">Service &amp; Heading</div>
         <div class="kpi-value">
           <img
@@ -875,18 +1192,16 @@
 
     <!-- Map + Details Split -->
     <section class="main-grid">
-      <div class="map-shell">
+      <div class="map-shell neu-outset">
         <div class="map-toolbar">
           <div class="chip-group">
-            <button type="button" class="chip active" id="layerStreetBtn">Kathmandu Streets</button>
+            <button type="button" class="chip active" id="layerStreetBtn">Streets</button>
             <button type="button" class="chip" id="layerDarkBtn">Dark Map</button>
           </div>
           <div class="chip-group">
             <button type="button" class="chip active" id="followLiveBtn">Follow Bike</button>
             <button type="button" class="chip" id="zoomBikeBtn">Zoom Bike</button>
             <button type="button" class="chip" id="fitBoundsBtn">Fit Route</button>
-            <button type="button" class="chip" id="focusKtmBtn">KTM</button>
-            <button type="button" class="chip" id="focusNepalBtn">Nepal</button>
             <a class="chip" id="extMapsBtn" target="_blank" rel="noopener">Google Maps ↗</a>
           </div>
         </div>
@@ -895,7 +1210,7 @@
 
         <!-- Live Ride HUD Overlay -->
         <div class="map-hud">
-          <div class="map-hud-icon">
+          <div class="map-hud-icon neu-inset">
             <img
               id="hudStatusIcon"
               src="https://pages.pathao.com/_next/static/media/bike.1-yit1h3vi0-y.svg"
@@ -905,17 +1220,17 @@
           </div>
           <div class="map-hud-body">
             <div class="map-hud-top">
-              <span id="hudStatusText">Kathmandu Valley</span>
+              <span id="hudStatusText">Live Telemetry</span>
               <span id="hudEtaText" style="font-family:var(--mono);color:var(--text);">—</span>
             </div>
-            <div class="map-hud-dest" id="hudDestText">Awaiting ride link</div>
+            <div class="map-hud-dest" id="hudDestText">Awaiting ride link or saved ID</div>
           </div>
         </div>
       </div>
 
       <div class="side-col">
         <!-- Driver & Vehicle -->
-        <div class="card">
+        <div class="card neu-outset">
           <div class="card-head">
             <span class="card-title">Driver &amp; Vehicle</span>
             <span class="badge badge-muted" id="vDriverId">ID #—</span>
@@ -936,7 +1251,7 @@
           </div>
 
           <div class="vehicle-strip">
-            <div class="plate-box">
+            <div class="plate-box neu-inset">
               <span id="vPlateText">—</span>
               <button type="button" class="chip" id="vPlateCopyBtn" style="display:none;">Copy</button>
             </div>
@@ -952,10 +1267,10 @@
         </div>
 
         <!-- Passenger & Emergency -->
-        <div class="card">
+        <div class="card neu-outset">
           <div class="card-head">
             <span class="card-title">Passenger</span>
-            <a class="call-link" id="vEmergencyBtn" href="tel:100" style="background:rgba(232,46,63,0.14);border-color:rgba(232,46,63,0.38);color:#ff6b78;">Emergency 100</a>
+            <a class="call-link" id="vEmergencyBtn" href="tel:100" style="background:linear-gradient(145deg,rgba(232,46,63,0.22),rgba(232,46,63,0.12));border-color:rgba(232,46,63,0.38);color:#ff7b86;">Emergency 100</a>
           </div>
 
           <div class="profile-row">
@@ -971,7 +1286,7 @@
         </div>
 
         <!-- Route Waypoints -->
-        <div class="card">
+        <div class="card neu-outset">
           <div class="card-head">
             <span class="card-title">Route &amp; Waypoints</span>
           </div>
@@ -1026,48 +1341,123 @@
       </div>
     </section>
 
-    <!-- Exact Timestamps & Telemetry Fields -->
-    <section class="card">
-      <div class="card-head">
-        <span class="card-title">Session Timestamps &amp; Coordinates</span>
-        <button type="button" class="chip" id="rideIdBadge" title="Copy Ride ID">—</button>
+    <!-- Realtime RTDB Records Vault (pathao-rt) -->
+    <section class="rtdb-section neu-outset">
+      <div class="rtdb-header">
+        <div class="rtdb-title-group">
+          <span class="card-title" style="font-size:12px;">Realtime Cloud Records</span>
+          <span class="badge badge-green" id="recordCountBadge">0 Stored</span>
+        </div>
+
+        <div class="rtdb-actions">
+          <div class="search-box neu-inset">
+            <input
+              id="recordSearchInput"
+              type="text"
+              placeholder="Search ID (#14843378), driver, plate, phone, address..."
+              autocomplete="off"
+              spellcheck="false"
+            />
+          </div>
+          <button type="button" class="btn btn-primary" id="openAddModalBtn">+ Add Record</button>
+        </div>
       </div>
-      <div class="meta-grid" id="metaGrid"></div>
+
+      <div class="records-grid" id="recordsGrid">
+        <div class="empty-records neu-inset">Connecting to Cloud RTDB...</div>
+      </div>
     </section>
   </main>
 
   <!-- Full-Resolution Photo Lightbox -->
   <div class="lightbox-bg" id="photoLightbox">
-    <div class="lightbox-card">
+    <div class="lightbox-card neu-outset">
       <img id="lightboxImg" referrerpolicy="no-referrer" alt="" />
       <div class="lightbox-caption" id="lightboxCaption"></div>
     </div>
   </div>
 
-  <!-- Direct Payload Modal -->
-  <div class="modal-bg" id="manualModal">
-    <div class="modal-box">
+  <!-- Add Record Modal -->
+  <div class="modal-bg" id="addRecordModal">
+    <div class="modal-box neu-outset">
       <div class="card-head" style="margin-bottom:0;">
-        <span class="card-title">Direct Payload Input</span>
-        <button type="button" class="chip" id="closeManualBtn">ESC</button>
+        <span class="card-title">Add Record to Cloud RTDB</span>
+        <button type="button" class="chip" id="closeAddModalBtn">ESC</button>
       </div>
-      <textarea id="manualRideInput" placeholder="/api/ride JSON"></textarea>
-      <textarea id="manualPathInput" placeholder="/api/ride/path JSON (optional)"></textarea>
-      <div style="display:flex;justify-content:flex-end;">
-        <button type="button" class="btn btn-primary" id="parseManualBtn">Load</button>
-      </div>
+
+      <form id="addUrlForm" class="field-group">
+        <label class="field-label">Option 1 • Track &amp; Sync Pathao Share Link</label>
+        <div style="display:flex;gap:8px;">
+          <input
+            id="modalShareUrl"
+            class="field-input neu-inset"
+            type="text"
+            placeholder="https://pages.pathao.com/share-ride/..."
+          />
+          <button type="submit" class="btn btn-primary">Sync</button>
+        </div>
+      </form>
+
+      <div style="height:1px;background:rgba(255,255,255,0.06);"></div>
+
+      <form id="addManualRecordForm" class="form-grid">
+        <div class="field-group">
+          <label class="field-label">ID Number *</label>
+          <input id="mId" class="field-input neu-inset" type="text" placeholder="14843378" required />
+        </div>
+        <div class="field-group">
+          <label class="field-label">Status</label>
+          <input id="mStatus" class="field-input neu-inset" type="text" value="STARTED" />
+        </div>
+        <div class="field-group">
+          <label class="field-label">Driver Name *</label>
+          <input id="mDriverName" class="field-input neu-inset" type="text" placeholder="Driver full name" required />
+        </div>
+        <div class="field-group">
+          <label class="field-label">Driver Phone</label>
+          <input id="mDriverPhone" class="field-input neu-inset" type="text" placeholder="+977 98XXXXXXXX" />
+        </div>
+        <div class="field-group">
+          <label class="field-label">Vehicle Plate</label>
+          <input id="mPlate" class="field-input neu-inset" type="text" placeholder="BA 99 PA 1234" />
+        </div>
+        <div class="field-group">
+          <label class="field-label">Bike Model &amp; Color</label>
+          <input id="mVehicle" class="field-input neu-inset" type="text" placeholder="Pulsar 150 • BLACK" />
+        </div>
+        <div class="field-group">
+          <label class="field-label">Passenger Name</label>
+          <input id="mRiderName" class="field-input neu-inset" type="text" placeholder="Passenger name" />
+        </div>
+        <div class="field-group">
+          <label class="field-label">Share Ride ID (Optional)</label>
+          <input id="mShareId" class="field-input neu-inset" type="text" placeholder="u----pxXG..." />
+        </div>
+        <div class="field-group full">
+          <label class="field-label">Pickup Address</label>
+          <input id="mPickup" class="field-input neu-inset" type="text" placeholder="Pickup location" />
+        </div>
+        <div class="field-group full">
+          <label class="field-label">Destination Address</label>
+          <input id="mDropoff" class="field-input neu-inset" type="text" placeholder="Destination location" />
+        </div>
+        <div class="field-group full" style="flex-direction:row;justify-content:flex-end;margin-top:4px;">
+          <button type="submit" class="btn btn-primary" id="saveCustomRecBtn">Save to RTDB</button>
+        </div>
+      </form>
     </div>
   </div>
 
   <footer>© 2026 Sanchar Koirala | All rights reserved</footer>
 
   <script>
-    const KATHMANDU_CENTER = [27.6915, 85.3240];
+    const RTDB_BASE = "https://cloud-db-studio-default-rtdb.firebaseio.com";
+    const RTDB_FOLDER = "pathao-rt";
+    const DEFAULT_CENTER = [27.6915, 85.3240];
     const NEPAL_BOUNDS = [
       [26.347, 80.058],
       [30.447, 88.201]
     ];
-
     const CDN_BASE = "https://cdn.pathao.com";
 
     const ASSETS = {
@@ -1107,7 +1497,8 @@
     let lastGpsFix = null;
 
     // 1-Second Polling State
-    let currentRideId = null;
+    let currentShareRideId = null;
+    let activeRecordId = null;
     let liveSyncEnabled = true;
     let pollTimeoutId = null;
     let inFlight = false;
@@ -1116,12 +1507,28 @@
     let latestRideJson = null;
     let latestPathJson = null;
 
+    // RTDB Realtime Sync State
+    let rtdbRecords = {};
+    let rtdbEventSource = null;
+    let rtdbFallbackTimer = null;
+    let lastSyncedSignature = "";
+    let lastSyncedTimestamp = 0;
+    let pendingDeleteId = null;
+    let pendingDeleteTimer = null;
+
     function esc(str) {
       return String(str ?? "")
         .replace(/&/g, "&amp;")
         .replace(/</g, "&lt;")
         .replace(/>/g, "&gt;")
         .replace(/"/g, "&quot;");
+    }
+
+    function sanitizeKey(raw) {
+      return String(raw ?? "")
+        .trim()
+        .replace(/^#/, "")
+        .replace(/[.#$\[\]/]/g, "_");
     }
 
     function formatNepalPhone(raw) {
@@ -1164,20 +1571,6 @@
       }
     }
 
-    function formatUnix(unixSec, offsetSec = 20700) {
-      if (!unixSec) return "—";
-      const d = new Date((Number(unixSec) + Number(offsetSec)) * 1000);
-      const yyyy = d.getUTCFullYear();
-      const mm = String(d.getUTCMonth() + 1).padStart(2, "0");
-      const dd = String(d.getUTCDate()).padStart(2, "0");
-      let hh = d.getUTCHours();
-      const min = String(d.getUTCMinutes()).padStart(2, "0");
-      const ss = String(d.getUTCSeconds()).padStart(2, "0");
-      const ampm = hh >= 12 ? "PM" : "AM";
-      hh = hh % 12 || 12;
-      return `${yyyy}-${mm}-${dd} ${String(hh).padStart(2, "0")}:${min}:${ss} ${ampm}`;
-    }
-
     function formatTimeOnly(unixSec, offsetSec = 20700) {
       if (!unixSec) return "—";
       const d = new Date((Number(unixSec) + Number(offsetSec)) * 1000);
@@ -1189,6 +1582,16 @@
       return `${String(hh).padStart(2, "0")}:${min}:${ss} ${ampm}`;
     }
 
+    function formatRelativeTime(ms) {
+      if (!ms) return "—";
+      const diff = Math.max(0, Math.floor((Date.now() - Number(ms)) / 1000));
+      if (diff < 5) return "just now";
+      if (diff < 60) return `${diff}s ago`;
+      if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
+      if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`;
+      return `${Math.floor(diff / 86400)}d ago`;
+    }
+
     function formatDuration(sec) {
       if (sec == null || isNaN(sec)) return "—";
       const s = Math.max(0, Math.round(Number(sec)));
@@ -1197,14 +1600,6 @@
       const rem = s % 60;
       if (h > 0) return `${h}h ${m}m ${rem}s`;
       return `${m}m ${rem}s`;
-    }
-
-    function formatOffset(offsetSec) {
-      const sign = offsetSec >= 0 ? "+" : "-";
-      const abs = Math.abs(Number(offsetSec || 0));
-      const h = String(Math.floor(abs / 3600)).padStart(2, "0");
-      const m = String(Math.floor((abs % 3600) / 60)).padStart(2, "0");
-      return `UTC${sign}${h}:${m}`;
     }
 
     function decodePolyline(encoded, precision = 5) {
@@ -1398,7 +1793,13 @@
     function setStatus(msg, type = "") {
       const el = $("statusLine");
       el.textContent = msg;
-      el.className = `sync-status ${type}`.trim();
+      el.className = `sync-pill neu-inset ${type}`.trim();
+    }
+
+    function setRtdbStatus(msg, ok = true) {
+      const el = $("rtdbStatusBadge");
+      el.className = `sync-pill neu-inset ${ok ? "ok" : "err"}`;
+      el.innerHTML = `<span class="dot-pulse"></span><span>${esc(msg)}</span>`;
     }
 
     function copyText(text, btnEl) {
@@ -1411,11 +1812,470 @@
       });
     }
 
+    /* =========================================================================
+       FIREBASE REALTIME DATABASE (cloud-db-studio / pathao-rt)
+       ========================================================================= */
+
+    function resolveCanonicalRecordId(ride, path, fallbackId) {
+      const rawId =
+        ride?.driver?.id ??
+        path?.driver_id ??
+        ride?.id ??
+        path?.ride_id ??
+        fallbackId;
+      return sanitizeKey(rawId || "unknown");
+    }
+
+    function buildRtdbPayload(ride, path, shareRideId, canonicalId) {
+      const drv = ride?.driver || {};
+      const veh = drv.vehicle || {};
+      const rdr = ride?.rider || {};
+      const pLat = ride?.pickup_latitude ?? path?.pickup_address?.lat ?? null;
+      const pLng = ride?.pickup_longitude ?? path?.pickup_address?.long ?? null;
+      const cLat = path?.current_address?.lat ?? ride?.dropoff_latitude ?? ride?.current_latitude ?? null;
+      const cLng = path?.current_address?.long ?? ride?.dropoff_longitude ?? ride?.current_longitude ?? null;
+      const dLat = ride?.dropoff_latitude ?? path?.destination_address?.lat ?? ride?.estimated_dropoff_latitude ?? null;
+      const dLng = ride?.dropoff_longitude ?? path?.destination_address?.long ?? ride?.estimated_dropoff_longitude ?? null;
+
+      const existing = rtdbRecords[canonicalId];
+      const now = Date.now();
+
+      return {
+        id: canonicalId,
+        share_ride_id: shareRideId || existing?.share_ride_id || "",
+        share_url: shareRideId ? `https://pages.pathao.com/share-ride/${shareRideId}` : (existing?.share_url || ""),
+        status: (ride?.status || path?.ride_status || "UNKNOWN").toUpperCase(),
+        ride_message: ride?.ride_message || path?.ride_message || "",
+        ride_type: ride?.ride_type || "bike",
+        is_offline: Boolean(ride?.is_offline ?? path?.is_offline ?? false),
+        has_dropoff: Boolean(ride?.has_dropoff ?? true),
+        emergency_number: ride?.emergency_number || "100",
+        time_offset: ride?.time_offset ?? 20700,
+        created_at: ride?.created_at ?? null,
+        started_at: ride?.started_at ?? null,
+        ended_at: ride?.ended_at ?? null,
+        estimated_ride_duration: ride?.estimated_ride_duration ?? null,
+        driver: {
+          id: drv.id ?? path?.driver_id ?? canonicalId,
+          name: drv.name || "",
+          number: drv.number || "",
+          rating: drv.rating || "",
+          profile_pic: drv.profile_pic || "",
+          vehicle: {
+            reg_number: veh.reg_number || "",
+            model: veh.model || "",
+            color: veh.color || ""
+          }
+        },
+        rider: {
+          name: rdr.name || "",
+          rating: rdr.rating || "",
+          profile_pic: rdr.profile_pic || ""
+        },
+        pickup: {
+          address: ride?.pickup_address || path?.pickup_address?.street || "",
+          lat: pLat,
+          long: pLng,
+          arrival_time: path?.pickup_address?.arrival_time ?? null,
+          has_reached: Boolean(path?.pickup_address?.has_reached)
+        },
+        dropoff: {
+          address: ride?.dropoff_address || path?.destination_address?.street || "",
+          lat: dLat,
+          long: dLng,
+          arrival_time: path?.destination_address?.arrival_time ?? ride?.ended_at ?? null,
+          has_reached: Boolean(path?.destination_address?.has_reached)
+        },
+        current_location: {
+          lat: cLat,
+          long: cLng
+        },
+        towards_destination: {
+          distance: path?.towards_destination?.distance ?? null,
+          duration: path?.towards_destination?.duration ?? null,
+          polyline: path?.towards_destination?.polyline ?? ""
+        },
+        stoppages: ride?.stoppages ?? [],
+        added_at: existing?.added_at || now,
+        updated_at: now,
+        raw_ride: ride || existing?.raw_ride || null,
+        raw_path: path || existing?.raw_path || null
+      };
+    }
+
+    async function syncRecordToRtdb(ride, path, shareRideId) {
+      if (!ride && !path) return;
+      const canonicalId = resolveCanonicalRecordId(ride, path, shareRideId);
+      if (!canonicalId || canonicalId === "unknown") return;
+
+      activeRecordId = canonicalId;
+      const payload = buildRtdbPayload(ride, path, shareRideId, canonicalId);
+
+      // Deduplicate rapid identical writes while still updating immediately on any telemetry change
+      const sig = JSON.stringify([
+        payload.id,
+        payload.status,
+        payload.ride_message,
+        payload.current_location.lat,
+        payload.current_location.long,
+        payload.towards_destination.distance,
+        payload.towards_destination.duration,
+        payload.driver.name,
+        payload.driver.vehicle.reg_number,
+        payload.dropoff.address
+      ]);
+
+      const now = Date.now();
+      if (sig === lastSyncedSignature && now - lastSyncedTimestamp < 8000) {
+        return;
+      }
+
+      lastSyncedSignature = sig;
+      lastSyncedTimestamp = now;
+
+      // Optimistic local state update
+      rtdbRecords[canonicalId] = payload;
+      renderRecordsList();
+
+      // Remove temporary share-key placeholder if driver ID just resolved
+      const tempShareKey = sanitizeKey(shareRideId);
+      if (tempShareKey && tempShareKey !== canonicalId && rtdbRecords[tempShareKey]) {
+        delete rtdbRecords[tempShareKey];
+        fetch(`${RTDB_BASE}/${RTDB_FOLDER}/${encodeURIComponent(tempShareKey)}.json`, {
+          method: "DELETE"
+        }).catch(() => {});
+      }
+
+      try {
+        const res = await fetch(
+          `${RTDB_BASE}/${RTDB_FOLDER}/${encodeURIComponent(canonicalId)}.json`,
+          {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload)
+          }
+        );
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        setRtdbStatus(`Synced #${canonicalId}`, true);
+      } catch (_) {
+        setRtdbStatus("RTDB Retry", false);
+      }
+    }
+
+    async function deleteRtdbRecord(id) {
+      const cleanId = sanitizeKey(id);
+      if (!cleanId) return;
+
+      delete rtdbRecords[cleanId];
+      if (activeRecordId === cleanId) {
+        activeRecordId = null;
+      }
+      renderRecordsList();
+
+      try {
+        const res = await fetch(
+          `${RTDB_BASE}/${RTDB_FOLDER}/${encodeURIComponent(cleanId)}.json`,
+          { method: "DELETE" }
+        );
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        setRtdbStatus(`Deleted #${cleanId}`, true);
+      } catch (_) {
+        setRtdbStatus("Delete Error", false);
+      }
+    }
+
+    async function fetchAllRtdbRecords() {
+      try {
+        const res = await fetch(`${RTDB_BASE}/${RTDB_FOLDER}.json`, {
+          cache: "no-store"
+        });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const data = await res.json();
+        rtdbRecords = data && typeof data === "object" ? data : {};
+        renderRecordsList();
+        setRtdbStatus("RTDB Live", true);
+      } catch (_) {
+        setRtdbStatus("RTDB Offline", false);
+      }
+    }
+
+    function applyRtdbSsePatch(path, data) {
+      if (path === "/") {
+        rtdbRecords = data && typeof data === "object" ? data : {};
+      } else {
+        const parts = path.split("/").filter(Boolean);
+        const recKey = parts[0];
+        if (!recKey) return;
+
+        if (parts.length === 1) {
+          if (data === null) {
+            delete rtdbRecords[recKey];
+          } else if (typeof data === "object") {
+            rtdbRecords[recKey] = { ...(rtdbRecords[recKey] || {}), ...data };
+          }
+        } else {
+          if (!rtdbRecords[recKey]) rtdbRecords[recKey] = {};
+          let target = rtdbRecords[recKey];
+          for (let i = 1; i < parts.length - 1; i++) {
+            if (!target[parts[i]] || typeof target[parts[i]] !== "object") {
+              target[parts[i]] = {};
+            }
+            target = target[parts[i]];
+          }
+          const leaf = parts[parts.length - 1];
+          if (data === null) {
+            delete target[leaf];
+          } else {
+            target[leaf] = data;
+          }
+        }
+      }
+
+      renderRecordsList();
+
+      // If another visitor updated the currently open record in RTDB and we aren't actively polling its Pathao URL, refresh view live
+      if (activeRecordId && rtdbRecords[activeRecordId] && !inFlight) {
+        const rec = rtdbRecords[activeRecordId];
+        if (!currentShareRideId || currentShareRideId !== rec.share_ride_id) {
+          loadRecordIntoDashboard(rec, false);
+        }
+      }
+    }
+
+    function connectRtdbStream() {
+      fetchAllRtdbRecords();
+
+      if (rtdbEventSource) {
+        rtdbEventSource.close();
+        rtdbEventSource = null;
+      }
+
+      try {
+        rtdbEventSource = new EventSource(`${RTDB_BASE}/${RTDB_FOLDER}.json`);
+
+        rtdbEventSource.addEventListener("put", (e) => {
+          try {
+            const payload = JSON.parse(e.data);
+            if (payload.path === "/") {
+              rtdbRecords = payload.data && typeof payload.data === "object" ? payload.data : {};
+              renderRecordsList();
+            } else {
+              applyRtdbSsePatch(payload.path, payload.data);
+            }
+            setRtdbStatus("RTDB Live", true);
+          } catch (_) {}
+        });
+
+        rtdbEventSource.addEventListener("patch", (e) => {
+          try {
+            const payload = JSON.parse(e.data);
+            applyRtdbSsePatch(payload.path, payload.data);
+            setRtdbStatus("RTDB Live", true);
+          } catch (_) {}
+        });
+
+        rtdbEventSource.onerror = () => {
+          setRtdbStatus("RTDB Syncing", true);
+        };
+      } catch (_) {}
+
+      if (rtdbFallbackTimer) clearInterval(rtdbFallbackTimer);
+      rtdbFallbackTimer = setInterval(fetchAllRtdbRecords, 12000);
+    }
+
+    function reconstructRideFromRecord(rec) {
+      if (rec.raw_ride && typeof rec.raw_ride === "object") return rec.raw_ride;
+      return {
+        status: rec.status || "STARTED",
+        ride_message: rec.ride_message || "",
+        ride_type: rec.ride_type || "bike",
+        is_offline: Boolean(rec.is_offline),
+        has_dropoff: rec.has_dropoff ?? true,
+        emergency_number: rec.emergency_number || "100",
+        time_offset: rec.time_offset ?? 20700,
+        created_at: rec.created_at ?? null,
+        started_at: rec.started_at ?? null,
+        ended_at: rec.ended_at ?? null,
+        estimated_ride_duration: rec.estimated_ride_duration ?? null,
+        pickup_address: rec.pickup?.address || "",
+        pickup_latitude: rec.pickup?.lat ?? null,
+        pickup_longitude: rec.pickup?.long ?? null,
+        dropoff_address: rec.dropoff?.address || "",
+        dropoff_latitude: rec.dropoff?.lat ?? null,
+        dropoff_longitude: rec.dropoff?.long ?? null,
+        current_latitude: rec.current_location?.lat ?? null,
+        current_longitude: rec.current_location?.long ?? null,
+        driver: rec.driver || {},
+        rider: rec.rider || {},
+        stoppages: rec.stoppages || []
+      };
+    }
+
+    function reconstructPathFromRecord(rec) {
+      if (rec.raw_path && typeof rec.raw_path === "object") return rec.raw_path;
+      return {
+        driver_id: rec.driver?.id ?? rec.id,
+        ride_status: rec.status || "STARTED",
+        ride_message: rec.ride_message || "",
+        is_offline: Boolean(rec.is_offline),
+        pickup_address: rec.pickup || {},
+        destination_address: rec.dropoff || {},
+        current_address: rec.current_location || {},
+        towards_destination: rec.towards_destination || {}
+      };
+    }
+
+    function loadRecordIntoDashboard(rec, resumeLiveIfPossible = true) {
+      if (!rec) return;
+      const recId = sanitizeKey(rec.id);
+      activeRecordId = recId;
+      resetAvatars();
+      initialFitDone = false;
+      lastRideStatus = null;
+      lastPolylineEncoded = null;
+      decodedRouteCoords = [];
+      lastStoppagesSig = null;
+
+      if (pickupMarker) { pickupMarker.remove(); pickupMarker = null; }
+      if (currentMarker) { currentMarker.remove(); currentMarker = null; }
+      if (dropoffMarker) { dropoffMarker.remove(); dropoffMarker = null; }
+      if (routeCasing) { routeCasing.setLatLngs([]); }
+      if (routePolyline) { routePolyline.setLatLngs([]); }
+
+      const rideObj = reconstructRideFromRecord(rec);
+      const pathObj = reconstructPathFromRecord(rec);
+
+      patchDashboard(rideObj, pathObj, rec.share_ride_id || recId);
+      renderRecordsList();
+
+      if (rec.share_url) {
+        $("urlInput").value = rec.share_url;
+      } else {
+        $("urlInput").value = `#${recId}`;
+      }
+
+      if (resumeLiveIfPossible && rec.share_ride_id) {
+        stopPollingLoop();
+        currentShareRideId = rec.share_ride_id;
+        liveSyncEnabled = true;
+        $("liveToggleBtn").style.display = "inline-flex";
+        $("liveToggleBtn").classList.add("live-on");
+        $("liveToggleBtn").innerHTML = `<span class="dot-pulse"></span><span>1s Live</span>`;
+        const token = ++pollSessionToken;
+        runPollCycle(token, false);
+      } else if (resumeLiveIfPossible) {
+        stopPollingLoop();
+        currentShareRideId = null;
+        $("liveToggleBtn").style.display = "none";
+        setStatus(`Loaded #${recId}`, "ok");
+      }
+    }
+
+    function renderRecordsList() {
+      const grid = $("recordsGrid");
+      const query = ($("recordSearchInput")?.value || "").trim().toLowerCase().replace(/^#/, "");
+
+      const allItems = Object.entries(rtdbRecords)
+        .filter(([, val]) => val && typeof val === "object")
+        .map(([key, val]) => ({ ...val, id: sanitizeKey(val.id || key) }))
+        .sort((a, b) => Number(b.updated_at || b.added_at || 0) - Number(a.updated_at || a.added_at || 0));
+
+      $("recordCountBadge").textContent = `${allItems.length} Stored`;
+
+      const filtered = query
+        ? allItems.filter((item) => {
+            const hay = [
+              item.id,
+              item.status,
+              item.driver?.name,
+              item.driver?.number,
+              item.driver?.vehicle?.reg_number,
+              item.driver?.vehicle?.model,
+              item.rider?.name,
+              item.pickup?.address,
+              item.dropoff?.address
+            ]
+              .filter(Boolean)
+              .join(" ")
+              .toLowerCase();
+            return hay.includes(query);
+          })
+        : allItems;
+
+      if (!filtered.length) {
+        grid.innerHTML = `<div class="empty-records neu-inset">${
+          allItems.length
+            ? "No matching records found."
+            : "No records in pathao-rt yet. Paste a Pathao ride link above or click + Add Record."
+        }</div>`;
+        return;
+      }
+
+      grid.innerHTML = filtered
+        .map((rec) => {
+          const isCurrent = activeRecordId === rec.id;
+          const st = (rec.status || "UNKNOWN").toUpperCase();
+          const badgeClass =
+            st === "STARTED" || st === "COMPLETED" ? "badge-green" : "badge-amber";
+          const drvName = rec.driver?.name || "Unknown Driver";
+          const plate = rec.driver?.vehicle?.reg_number || "—";
+          const model = rec.driver?.vehicle?.model || "";
+          const picUrl = resolvePicUrl(rec.driver?.profile_pic);
+          const pickup = rec.pickup?.address || "—";
+          const dropoff = rec.dropoff?.address || "—";
+          const isConfirming = pendingDeleteId === rec.id;
+
+          return `
+            <div class="rec-card ${isCurrent ? "active-rec" : ""}" data-rec-id="${esc(rec.id)}">
+              <div class="rec-top">
+                <span class="rec-id-tag neu-inset">#${esc(rec.id)}</span>
+                <span class="badge ${badgeClass}">${esc(st)}</span>
+              </div>
+
+              <div class="rec-driver">
+                <div class="rec-avatar">
+                  ${
+                    picUrl
+                      ? `<img src="${esc(picUrl)}" referrerpolicy="no-referrer" alt="" onerror="this.remove()" />`
+                      : `<span>${esc(initials(drvName))}</span>`
+                  }
+                </div>
+                <div class="rec-driver-meta">
+                  <div class="rec-driver-name">${esc(drvName)}</div>
+                  <div class="rec-driver-sub">${esc(plate)}${model ? " • " + esc(model) : ""}</div>
+                </div>
+              </div>
+
+              <div class="rec-route neu-inset">
+                <div class="rec-route-line"><strong>From:</strong> ${esc(pickup)}</div>
+                <div class="rec-route-line"><strong>To:</strong> ${esc(dropoff)}</div>
+              </div>
+
+              <div class="rec-foot">
+                <span class="rec-time">${esc(formatRelativeTime(rec.updated_at || rec.added_at))}</span>
+                <div class="rec-btns">
+                  <button type="button" class="chip ${isCurrent ? "active" : ""}" data-action="view" data-id="${esc(rec.id)}">
+                    ${isCurrent ? "Viewing" : "View"}
+                  </button>
+                  <button type="button" class="chip chip-danger" data-action="delete" data-id="${esc(rec.id)}">
+                    ${isConfirming ? "Confirm?" : "Delete"}
+                  </button>
+                </div>
+              </div>
+            </div>`;
+        })
+        .join("");
+    }
+
+    /* =========================================================================
+       MAP & TELEMETRY DASHBOARD
+       ========================================================================= */
+
     function ensureMap() {
       if (mapInstance) return;
 
       mapInstance = L.map("map", {
-        center: KATHMANDU_CENTER,
+        center: DEFAULT_CENTER,
         zoom: 13,
         maxBounds: NEPAL_BOUNDS,
         maxBoundsViscosity: 0.75,
@@ -1424,13 +2284,13 @@
       });
 
       streetTileLayer = L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
-        attribution: "&copy; OpenStreetMap • Kathmandu, Nepal",
+        attribution: "&copy; OpenStreetMap",
         maxZoom: 19,
         keepBuffer: 4
       }).addTo(mapInstance);
 
       darkTileLayer = L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
-        attribution: "&copy; OpenStreetMap • Kathmandu, Nepal",
+        attribution: "&copy; OpenStreetMap",
         maxZoom: 19,
         keepBuffer: 4,
         className: "dark-osm-tiles"
@@ -1606,7 +2466,7 @@
       }
     }
 
-    function patchDashboard(ride, path, rideId) {
+    function patchDashboard(ride, path, shareRideId) {
       latestRideJson = ride;
       latestPathJson = path;
 
@@ -1686,7 +2546,8 @@
       // Driver & Vehicle
       const drv = ride?.driver || {};
       const veh = drv.vehicle || {};
-      $("vDriverId").textContent = `ID #${drv.id ?? path?.driver_id ?? "—"}`;
+      const displayId = drv.id ?? path?.driver_id ?? activeRecordId ?? "—";
+      $("vDriverId").textContent = `ID #${displayId}`;
       $("vDriverName").textContent = drv.name || "—";
       $("vDriverInit").textContent = initials(drv.name);
 
@@ -1794,6 +2655,9 @@
         $("vPickupCoords").textContent = `${pLat}, ${pLng}`;
         $("vPickupMapLink").style.display = "inline-flex";
         $("vPickupMapLink").href = `https://maps.google.com/?q=${pLat},${pLng}`;
+      } else {
+        $("vPickupCoords").textContent = "—";
+        $("vPickupMapLink").style.display = "none";
       }
 
       const stopSig = JSON.stringify(ride?.stoppages || null);
@@ -1835,6 +2699,9 @@
         $("vDropCoords").textContent = `${dLat}, ${dLng}`;
         $("vDropMapLink").style.display = "inline-flex";
         $("vDropMapLink").href = `https://maps.google.com/?q=${dLat},${dLng}`;
+      } else {
+        $("vDropCoords").textContent = "—";
+        $("vDropMapLink").style.display = "none";
       }
 
       if (pLat != null && dLat != null) {
@@ -1842,30 +2709,6 @@
       } else if (cLat != null) {
         $("extMapsBtn").href = `https://maps.google.com/?q=${cLat},${cLng}`;
       }
-
-      // Session Timestamps & Exact Coordinates
-      $("rideIdBadge").textContent = rideId;
-      $("rideIdBadge").onclick = () => copyText(rideId, $("rideIdBadge"));
-
-      const metaRows = [
-        ["Created At", formatUnix(ride?.created_at, offset)],
-        ["Started At", formatUnix(ride?.started_at, offset)],
-        ["Ended At", formatUnix(ride?.ended_at, offset)],
-        ["Pickup Arrival", formatUnix(pArr, offset)],
-        ["Destination Arrival", formatUnix(dArr, offset)],
-        ["Server Time", formatUnix(path?.server_time, offset)],
-        ["Timezone", formatOffset(offset)],
-        ["Driver Phone", nepalPhone.display],
-        ["Pickup Wait", waitSec != null ? formatDuration(waitSec) : "—"],
-        ["Actual Dropoff GPS", ride?.dropoff_latitude != null ? `${ride.dropoff_latitude}, ${ride.dropoff_longitude}` : "—"],
-        ["Est. Dropoff GPS", ride?.estimated_dropoff_latitude != null ? `${ride.estimated_dropoff_latitude}, ${ride.estimated_dropoff_longitude}` : "—"],
-        ["Est. Pickup GPS", ride?.estimated_pickup_latitude != null ? `${ride.estimated_pickup_latitude}, ${ride.estimated_pickup_longitude}` : "—"],
-        ["Initial Endpoint GPS", ride?.current_latitude != null ? `${ride.current_latitude}, ${ride.current_longitude}` : "—"]
-      ];
-
-      $("metaGrid").innerHTML = metaRows
-        .map(([k, v]) => `<div class="meta-row"><span class="meta-k">${esc(k)}</span><span class="meta-v">${esc(v)}</span></div>`)
-        .join("");
 
       // Map Layers
       ensureMap();
@@ -1913,7 +2756,6 @@
         lastBounds = L.latLngBounds(boundsPoints);
       }
 
-      // Zoom directly onto realtime bike location when completed
       if (isCompleted && cLat != null && cLng != null) {
         if (!initialFitDone) {
           initialFitDone = true;
@@ -1938,12 +2780,12 @@
     }
 
     function scheduleNextPoll(sessionToken) {
-      if (!liveSyncEnabled || !currentRideId || sessionToken !== pollSessionToken) return;
+      if (!liveSyncEnabled || !currentShareRideId || sessionToken !== pollSessionToken) return;
       pollTimeoutId = setTimeout(() => runPollCycle(sessionToken, false), 1000);
     }
 
     async function runPollCycle(sessionToken, isManualStart = false) {
-      if (sessionToken !== pollSessionToken || !currentRideId) return;
+      if (sessionToken !== pollSessionToken || !currentShareRideId) return;
 
       if (inFlight) {
         scheduleNextPoll(sessionToken);
@@ -1952,7 +2794,7 @@
 
       inFlight = true;
       const t0 = performance.now();
-      const encoded = encodeURIComponent(currentRideId);
+      const encoded = encodeURIComponent(currentShareRideId);
       const rideUrl = `https://pages.pathao.com/api/ride?id=${encoded}`;
       const pathUrl = `https://pages.pathao.com/api/ride/path?id=${encoded}`;
 
@@ -1973,16 +2815,19 @@
         const pathData = pathRes.status === "fulfilled" ? pathRes.value : null;
 
         if (!rideData && !pathData) {
-          setStatus("Retrying connection...", "err");
+          setStatus("Retrying...", "err");
         } else {
-          patchDashboard(rideData || latestRideJson, pathData || latestPathJson, currentRideId);
+          const mergedRide = rideData || latestRideJson;
+          const mergedPath = pathData || latestPathJson;
+          patchDashboard(mergedRide, mergedPath, currentShareRideId);
+          syncRecordToRtdb(mergedRide, mergedPath, currentShareRideId);
           $("liveToggleBtn").style.display = "inline-flex";
           const ms = Math.round(performance.now() - t0);
           setStatus(`LIVE • ${ms}ms`, "ok");
         }
       } catch (_) {
         if (sessionToken === pollSessionToken) {
-          setStatus("Retrying connection...", "err");
+          setStatus("Retrying...", "err");
         }
       } finally {
         inFlight = false;
@@ -2006,15 +2851,28 @@
     }
 
     function startTracking(rawInput) {
-      const rideId = extractRideId(rawInput);
-      if (!rideId) {
-        setStatus("Invalid URL", "err");
+      const trimmed = rawInput.trim();
+      if (!trimmed) {
+        setStatus("Enter URL or ID", "err");
+        return;
+      }
+
+      // Check if user entered a numeric ID (#14843378 or 14843378) stored in RTDB
+      const candidateKey = sanitizeKey(trimmed);
+      if (/^\d+$/.test(candidateKey) && rtdbRecords[candidateKey]) {
+        loadRecordIntoDashboard(rtdbRecords[candidateKey], true);
+        return;
+      }
+
+      const shareRideId = extractRideId(trimmed);
+      if (!shareRideId) {
+        setStatus("Invalid Input", "err");
         return;
       }
 
       stopPollingLoop();
 
-      currentRideId = rideId;
+      currentShareRideId = shareRideId;
       initialFitDone = false;
       lastRideStatus = null;
       lastPolylineEncoded = null;
@@ -2026,6 +2884,7 @@
       lastGpsFix = null;
       latestRideJson = null;
       latestPathJson = null;
+      lastSyncedSignature = "";
       resetAvatars();
 
       if (pickupMarker) { pickupMarker.remove(); pickupMarker = null; }
@@ -2043,6 +2902,7 @@
     }
 
     ensureMap();
+    connectRtdbStream();
 
     $("lookupForm").addEventListener("submit", (e) => {
       e.preventDefault();
@@ -2058,7 +2918,7 @@
     $("liveToggleBtn").addEventListener("click", () => {
       liveSyncEnabled = !liveSyncEnabled;
       $("liveToggleBtn").classList.toggle("live-on", liveSyncEnabled);
-      if (liveSyncEnabled && currentRideId) {
+      if (liveSyncEnabled && currentShareRideId) {
         $("liveToggleBtn").innerHTML = `<span class="dot-pulse"></span><span>1s Live</span>`;
         const token = ++pollSessionToken;
         runPollCycle(token, false);
@@ -2111,18 +2971,105 @@
       }
     });
 
-    $("focusKtmBtn").addEventListener("click", () => {
-      ensureMap();
-      followLive = false;
-      $("followLiveBtn").classList.remove("active");
-      mapInstance.flyTo(KATHMANDU_CENTER, 13, { duration: 0.55 });
+    // RTDB Search & Card Actions
+    $("recordSearchInput").addEventListener("input", renderRecordsList);
+
+    $("recordsGrid").addEventListener("click", (e) => {
+      const btn = e.target.closest("[data-action]");
+      if (!btn) return;
+      const id = btn.dataset.id;
+      const action = btn.dataset.action;
+
+      if (action === "view" && rtdbRecords[id]) {
+        loadRecordIntoDashboard(rtdbRecords[id], true);
+        window.scrollTo({ top: 0, behavior: "smooth" });
+      } else if (action === "delete") {
+        if (pendingDeleteId === id) {
+          clearTimeout(pendingDeleteTimer);
+          pendingDeleteId = null;
+          deleteRtdbRecord(id);
+        } else {
+          pendingDeleteId = id;
+          renderRecordsList();
+          clearTimeout(pendingDeleteTimer);
+          pendingDeleteTimer = setTimeout(() => {
+            pendingDeleteId = null;
+            renderRecordsList();
+          }, 3000);
+        }
+      }
     });
 
-    $("focusNepalBtn").addEventListener("click", () => {
-      ensureMap();
-      followLive = false;
-      $("followLiveBtn").classList.remove("active");
-      mapInstance.fitBounds(NEPAL_BOUNDS, { padding: [16, 16] });
+    // Add Record Modal
+    $("openAddModalBtn").addEventListener("click", () => {
+      $("addRecordModal").classList.add("open");
+    });
+
+    $("closeAddModalBtn").addEventListener("click", () => {
+      $("addRecordModal").classList.remove("open");
+    });
+
+    $("addRecordModal").addEventListener("click", (e) => {
+      if (e.target === $("addRecordModal")) {
+        $("addRecordModal").classList.remove("open");
+      }
+    });
+
+    $("addUrlForm").addEventListener("submit", (e) => {
+      e.preventDefault();
+      const val = $("modalShareUrl").value.trim();
+      if (!val) return;
+      $("urlInput").value = val;
+      $("modalShareUrl").value = "";
+      $("addRecordModal").classList.remove("open");
+      startTracking(val);
+    });
+
+    $("addManualRecordForm").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const id = sanitizeKey($("mId").value);
+      if (!id) return;
+
+      const vehParts = $("mVehicle").value.split("•").map((s) => s.trim());
+      const shareId = extractRideId($("mShareId").value) || "";
+
+      const fakeRide = {
+        status: ($("mStatus").value || "STARTED").trim().toUpperCase(),
+        ride_message: ($("mStatus").value || "Started").trim(),
+        ride_type: "bike",
+        has_dropoff: Boolean($("mDropoff").value.trim()),
+        pickup_address: $("mPickup").value.trim(),
+        dropoff_address: $("mDropoff").value.trim(),
+        driver: {
+          id,
+          name: $("mDriverName").value.trim(),
+          number: $("mDriverPhone").value.trim(),
+          vehicle: {
+            reg_number: $("mPlate").value.trim(),
+            model: vehParts[0] || "",
+            color: vehParts[1] || ""
+          }
+        },
+        rider: {
+          name: $("mRiderName").value.trim()
+        }
+      };
+
+      const fakePath = {
+        driver_id: id,
+        ride_status: fakeRide.status,
+        ride_message: fakeRide.ride_message,
+        pickup_address: { street: fakeRide.pickup_address },
+        destination_address: { street: fakeRide.dropoff_address }
+      };
+
+      lastSyncedSignature = "";
+      await syncRecordToRtdb(fakeRide, fakePath, shareId);
+      loadRecordIntoDashboard(rtdbRecords[id], Boolean(shareId));
+
+      $("addManualRecordForm").reset();
+      $("mStatus").value = "STARTED";
+      $("addRecordModal").classList.remove("open");
     });
 
     $("photoLightbox").addEventListener("click", (e) => {
@@ -2131,38 +3078,18 @@
       }
     });
 
-    $("openManualBtn").addEventListener("click", () => $("manualModal").classList.add("open"));
-    $("closeManualBtn").addEventListener("click", () => $("manualModal").classList.remove("open"));
     document.addEventListener("keydown", (e) => {
       if (e.key === "Escape") {
-        $("manualModal").classList.remove("open");
+        $("addRecordModal").classList.remove("open");
         $("photoLightbox").classList.remove("open");
       }
     });
 
-    $("parseManualBtn").addEventListener("click", () => {
-      try {
-        stopPollingLoop();
-        const rRaw = $("manualRideInput").value.trim();
-        const pRaw = $("manualPathInput").value.trim();
-        const rJson = rRaw ? JSON.parse(rRaw) : null;
-        const pJson = pRaw ? JSON.parse(pRaw) : null;
-        if (!rJson && !pJson) return;
-        const id = extractRideId($("urlInput").value) || "RIDE_SESSION";
-        initialFitDone = false;
-        lastRideStatus = null;
-        lastPolylineEncoded = null;
-        decodedRouteCoords = [];
-        resetAvatars();
-        patchDashboard(rJson, pJson, id);
-        $("manualModal").classList.remove("open");
-        setStatus("Loaded", "ok");
-      } catch (err) {
-        setStatus(`Invalid JSON: ${err.message}`, "err");
-      }
+    window.addEventListener("beforeunload", () => {
+      stopPollingLoop();
+      if (rtdbEventSource) rtdbEventSource.close();
+      if (rtdbFallbackTimer) clearInterval(rtdbFallbackTimer);
     });
-
-    window.addEventListener("beforeunload", stopPollingLoop);
 
     const params = new URLSearchParams(window.location.search);
     const initialTarget = params.get("url") || params.get("id");
